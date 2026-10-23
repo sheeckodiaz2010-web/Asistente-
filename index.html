@@ -117,7 +117,7 @@ textarea:focus{border-color:var(--acc)}
   <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
 </div></div>
 <script>
-const VERSION='2026-10-23-4';
+const VERSION='2026-10-23-5';
 const $=s=>document.querySelector(s);
 const chat=$('#chat'),q=$('#q'),go=$('#go'),md=$('#md');
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
@@ -271,11 +271,27 @@ async function groq(o){
   return sse(res,j=>j.choices?.[0]?.delta?.content,o.onTok)}
 async function gemini(o){
   const contents=o.msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content},...(m.imgs||[]).slice(0,8).map(u=>({inlineData:{mimeType:'image/jpeg',data:u.split(',')[1]}}))]}));
-  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(gm())+':streamGenerateContent?alt=sse',{method:'POST',signal:ctrl.signal,
-    headers:{'x-goog-api-key':store.get('gem_key',''),'Content-Type':'application/json'},
-    body:JSON.stringify({systemInstruction:{parts:[{text:o.sys}]},contents,generationConfig:{temperature:o.temp??0.4,maxOutputTokens:o.max||16000},...(o.web?{tools:[{google_search:{}}]}:{})})});
-  if(!res.ok)throw new Error(await apiErr(res));
-  return sse(res,j=>(j.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join(''),o.onTok)}
+  const body=JSON.stringify({systemInstruction:{parts:[{text:o.sys}]},contents,generationConfig:{temperature:o.temp??0.4,maxOutputTokens:o.max||16000},...(o.web?{tools:[{google_search:{}}]}:{})});
+  const headers={'x-goog-api-key':store.get('gem_key',''),'Content-Type':'application/json'};
+  /* Si el modelo está saturado (503) reintenta y, si sigue igual, prueba otro modelo */
+  const tried=[gm(),'gemini-2.5-flash','gemini-2.5-flash-lite'].filter((m,i,a)=>a.indexOf(m)===i);
+  let res=null,first=true;
+  for(const m of tried){
+    for(let t=0;t<2;t++){
+      const tk=document.querySelector('#tk');if(tk)tk.textContent=first?'Pensando…':'Reintentando…';first=false;
+      const c=new AbortController(),onAb=()=>c.abort();ctrl.signal.addEventListener('abort',onAb);
+      const to=setTimeout(()=>c.abort(),30000);
+      try{res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(m)+':streamGenerateContent?alt=sse',{method:'POST',signal:c.signal,headers,body})}
+      catch(e){if(ctrl.signal.aborted)throw e;res=null}
+      clearTimeout(to);
+      if(res&&res.ok)return sse(res,j=>(j.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join(''),o.onTok);
+      if(res&&![500,502,503,504,429,404].includes(res.status))throw new Error(await apiErr(res));
+      if(res&&(res.status===429||res.status===404))break; /* otro modelo tiene su propio cupo */
+      await new Promise(r=>setTimeout(r,1500));
+    }
+  }
+  if(res)throw new Error(await apiErr(res));
+  throw new Error('Gemini no respondió. Revisa tu internet e intenta otra vez.')}
 const llm=o=>prov()==='gemini'?gemini(o):groq(o);
 
 const DEFCI=()=>store.get('ci',DEF_CI);
