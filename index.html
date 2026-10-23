@@ -15,7 +15,7 @@ header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:
 .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#f97316,#db2777);display:grid;place-items:center;font-size:20px}
 .ttl{flex:1}.ttl b{display:block;font-size:17px}.ttl span{font-size:12px;color:var(--mute)}
 .ib{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:17px;cursor:pointer}
-#chat{flex:1;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:18px;scroll-behavior:smooth}
+#chat{flex:1;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:18px}
 .u{align-self:flex-end;max-width:85%;background:var(--acc);color:#fff;padding:10px 15px;border-radius:20px 20px 6px 20px;white-space:pre-wrap;word-break:break-word}
 .a{max-width:100%;word-break:break-word}
 .a>*:first-child{margin-top:0}.a>*:last-child{margin-bottom:0}
@@ -58,6 +58,9 @@ textarea:focus{border-color:var(--acc)}
 #upd[hidden]{display:none}#upd button{background:#f59e0b;color:#111;border:0;border-radius:10px;padding:6px 14px;font:inherit;font-weight:600}
 #ci{width:100%;border-radius:12px;min-height:76px;max-height:160px;padding:10px 12px;flex:none}
 .ver{font-size:12px;color:var(--mute);margin-top:12px}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:9px 14px;border-radius:12px;font-size:14px;max-width:90%;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s;text-align:center}
+#toast.on{opacity:1}
+.think{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:14px}
 </style>
 </head>
 <body>
@@ -69,11 +72,12 @@ textarea:focus{border-color:var(--acc)}
 </header>
 <div id="upd" hidden><span>🔔 Hay una actualización disponible</span><button id="updb">Actualizar</button></div>
 <div id="chat"></div>
+<div id="toast"></div>
 <div class="bar">
   <div id="chips"></div>
   <button id="at" title="Adjuntar foto o archivo">📎</button>
   <button id="wb" title="Buscar en internet">🌐</button>
-  <input id="fi" type="file" multiple hidden accept="image/*,text/*,.md,.csv,.json,.html,.css,.js,.jsx,.ts,.tsx,.py,.xml,.yaml,.yml,.sql,.sh,.java,.c,.cpp,.php,.log,.txt">
+  <input id="fi" type="file" multiple hidden accept="image/*,.pdf,.xlsx,.xls,.xlsm,.docx,text/*,.md,.csv,.json,.html,.css,.js,.jsx,.ts,.tsx,.py,.xml,.yaml,.yml,.sql,.sh,.java,.c,.cpp,.php,.log,.txt">
   <textarea id="q" rows="1" placeholder="Escribe aquí…"></textarea>
   <button id="go" title="Enviar">➤</button>
 </div>
@@ -93,13 +97,13 @@ textarea:focus{border-color:var(--acc)}
   <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
 </div></div>
 <script>
-const VERSION='2026-10-23-2';
+const VERSION='2026-10-23-3';
 const $=s=>document.querySelector(s);
 const chat=$('#chat'),q=$('#q'),go=$('#go'),md=$('#md');
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 let hist=[];try{hist=JSON.parse(store.get('hist','[]'))}catch(e){}
 let busy=false,ctrl=null;
-const SUG=[['💡','Explícame algo interesante de forma sencilla'],['✍️','Ayúdame a redactar un mensaje claro y amable'],['🧩','Ayúdame a resolver un problema paso a paso'],['💻','Escríbeme un código y explícamelo']];
+const SUG=[['📷','Léeme una foto','attach'],['📄','Revisa un archivo (PDF, Excel, Word)','attach'],['🧮','Ayúdame con una cuenta o un precio','Ayúdame a calcular: '],['✍️','Redacta un mensaje corto','Redáctame un mensaje corto para ']];
 
 /* ---------- Markdown ---------- */
 const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -130,13 +134,13 @@ function render(t){return t.split('```').map((p,i)=>{
   return block(p)}).join('')}
 
 /* ---------- UI ---------- */
-function scroll(){chat.scrollTop=chat.scrollHeight}
+function scroll(force){if(force||chat.scrollHeight-chat.scrollTop-chat.clientHeight<140)chat.scrollTop=chat.scrollHeight}
 function addUser(t,imgs){const d=document.createElement('div');d.className='u';(imgs||[]).forEach(u=>{const i=new Image();i.src=u;d.appendChild(i)});d.appendChild(document.createTextNode(t));chat.appendChild(d)}
 function addAI(t){const d=document.createElement('div');d.className='a';d.innerHTML=render(t);chat.appendChild(d);return d}
 function actions(d,t,last){chat.querySelectorAll('.rt').forEach(b=>b.remove());const a=document.createElement('div');a.className='act';a.innerHTML='<button>Copiar respuesta</button> <button class="rt">↻ Reintentar</button>';a.firstChild.onclick=e=>{navigator.clipboard?.writeText(t);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar respuesta',1500)};d.appendChild(a)}
 function hero(){chat.innerHTML=`<div id="hero"><h2>¿En qué te ayudo?</h2><p>Pregúntame lo que quieras</p><div class="sg">${SUG.map((s,i)=>`<button data-i="${i}"><b>${s[0]}</b>${s[1]}</button>`).join('')}</div></div>`;
-  chat.querySelectorAll('.sg button').forEach(b=>b.onclick=()=>send(SUG[b.dataset.i][1]))}
-function load(){chat.innerHTML='';if(!hist.length)return hero();hist.forEach(m=>{if(m.role==='user')addUser(m.show||m.content);else{const d=addAI(m.content);actions(d,m.content)}});scroll()}
+  chat.querySelectorAll('.sg button').forEach(b=>b.onclick=()=>{const a=SUG[b.dataset.i][2];if(a==='attach')$('#fi').click();else{q.value=a;q.focus()}})}
+function load(){chat.innerHTML='';if(!hist.length)return hero();hist.forEach(m=>{if(m.role==='user')addUser(m.show||m.content);else{const d=addAI(m.content);actions(d,m.content)}});scroll(true)}
 const EXT={javascript:'js',python:'py',typescript:'ts',markdown:'md',bash:'sh',shell:'sh',yml:'yaml',csharp:'cs'};
 chat.addEventListener('click',e=>{
   if(e.target.classList.contains('rt')){if(busy)return;hist.pop();const u=hist.pop();store.set('hist',JSON.stringify(hist,(k,v)=>k==='imgs'?undefined:v));load();send(null,u);return}
@@ -159,55 +163,129 @@ $('#st').onclick=openSettings;$('#cl').onclick=()=>md.classList.remove('on');
 $('#sv').onclick=()=>{const k=$('#ky').value.replace(/[\s"']/g,'');if(k)store.set('groq_key',k);store.set('model',$('#ml').value);store.set('ci',$('#ci').value.trim());md.classList.remove('on');names()};
 
 /* ---------- Adjuntos ---------- */
+const LIM=12000,CDN='https://cdnjs.cloudflare.com/ajax/libs/',libs={};
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3800)}
+const imgN=()=>pend.filter(x=>x.img).length;
+function lib(u){return libs[u]||(libs[u]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{delete libs[u];no(new Error('no pude cargar el lector, revisa tu internet'))};document.head.appendChild(s)}))}
 function chips(){const c=$('#chips');c.innerHTML='';pend.forEach((f,i)=>{const t=document.createElement('span');t.className='chip';t.innerHTML=(f.img?`<img src="${f.img}">`:'📄 ')+esc(f.name)+` <b data-i="${i}">✕</b>`;c.appendChild(t)});c.classList.toggle('on',pend.length>0)}
 $('#chips').onclick=e=>{if(e.target.tagName==='B'){pend.splice(+e.target.dataset.i,1);chips()}};
 $('#at').onclick=()=>$('#fi').click();
 let web=store.get('web','0')==='1';const wbb=$('#wb');wbb.classList.toggle('on',web);
-wbb.onclick=()=>{web=!web;store.set('web',web?'1':'0');wbb.classList.toggle('on',web);wbb.title=web?'Búsqueda en internet: activada':'Búsqueda en internet: apagada'};
+wbb.onclick=()=>{web=!web;store.set('web',web?'1':'0');wbb.classList.toggle('on',web);wbb.title=web?'Búsqueda en internet: activada':'Búsqueda en internet: apagada';toast(web?'Búsqueda en internet activada':'Búsqueda en internet apagada')};
 function shrink(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.85))};im.onerror=no;im.src=u})}
-$('#fi').onchange=async e=>{
-  for(const f of e.target.files){
-    try{
-      if(f.type.startsWith('image/')){if(pend.filter(x=>x.img).length>=4){alert('Máximo 4 fotos por mensaje.');continue}pend.push({name:f.name||'foto.jpg',img:await shrink(f)})}
-      else{if(f.size>1e6||/pdf|zip|word|excel|sheet|octet/.test(f.type)){alert('"'+f.name+'": por ahora solo fotos y archivos de texto o código (hasta 1 MB).');continue}
-        let t=await f.text();if(t.includes('\u0000')){alert('"'+f.name+'" no es un archivo de texto.');continue}
-        if(t.length>12000){t=t.slice(0,12000)+'\n…(archivo recortado)';alert('"'+f.name+'" es largo: solo se leerán los primeros 12,000 caracteres (límite de la cuenta gratuita de Groq).')}pend.push({name:f.name,text:t})}
-    }catch(err){alert('No pude leer "'+f.name+'".')}
-  }
-  e.target.value='';chips()};
+
+/* Lectores de PDF, Excel y Word (se cargan solo cuando hacen falta) */
+async function readPDF(f){
+  await lib(CDN+'pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';
+  for(let i=1;i<=pdf.numPages&&t.length<LIM+500;i++){const c=await(await pdf.getPage(i)).getTextContent();t+='\n--- Página '+i+' ---\n'+c.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('')}
+  if(t.replace(/--- Página \d+ ---|\s/g,'').length<40){
+    const imgs=[];for(let i=1;i<=Math.min(pdf.numPages,4);i++){const p=await pdf.getPage(i),v=p.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;imgs.push(c.toDataURL('image/jpeg',.8))}
+    return{imgs}}
+  return{text:t}}
+async function readXLS(f){await lib(CDN+'xlsx/0.18.5/xlsx.full.min.js');const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});return wb.SheetNames.map(n=>'--- Hoja: '+n+' ---\n'+XLSX.utils.sheet_to_csv(wb.Sheets[n])).join('\n\n')}
+async function readDOCX(f){await lib(CDN+'mammoth/1.6.0/mammoth.browser.min.js');return(await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value}
+
+async function addFile(f){
+  const nm=f.name||'archivo',ext=(nm.split('.').pop()||'').toLowerCase();
+  try{
+    if(f.type.startsWith('image/')){if(imgN()>=4){toast('Máximo 4 fotos por mensaje.');return}pend.push({name:f.name||'foto.jpg',img:await shrink(f)});return}
+    const bin=ext==='pdf'||/^xls[xm]?$/.test(ext)||ext==='docx';
+    if(f.size>(bin?15e6:1e6)){toast('"'+nm+'" pesa demasiado.');return}
+    let t,im;
+    if(ext==='pdf'){toast('Leyendo PDF…');({text:t,imgs:im}=await readPDF(f))}
+    else if(/^xls[xm]?$/.test(ext)){toast('Leyendo Excel…');t=await readXLS(f)}
+    else if(ext==='docx'){toast('Leyendo Word…');t=await readDOCX(f)}
+    else if(/^(zip|rar|7z|doc|ppt|pptx|exe|apk)$/.test(ext)){toast('"'+nm+'": ese formato no lo puedo leer. Sirven PDF, Excel, Word, fotos y texto.');return}
+    else{t=await f.text();if(t.includes('\u0000')){toast('"'+nm+'" no es un archivo de texto.');return}}
+    if(im){im.slice(0,4-imgN()).forEach((u,i)=>pend.push({name:nm+' (pág. '+(i+1)+')',img:u}));toast('PDF escaneado: leo las primeras páginas como foto.');return}
+    if(!t||!t.trim()){toast('"'+nm+'" está vacío.');return}
+    if(t.length>LIM){t=t.slice(0,LIM)+'\n…(recortado)';toast('"'+nm+'" es largo: solo leo los primeros '+LIM.toLocaleString('es-MX')+' caracteres.')}
+    pend.push({name:nm,text:t})
+  }catch(err){toast('No pude leer "'+nm+'"'+(err.message?': '+err.message:'.'))}
+}
+$('#fi').onchange=async e=>{const fs=[...e.target.files];e.target.value='';for(const f of fs)await addFile(f);chips()};
+q.addEventListener('paste',async e=>{const fs=[...(e.clipboardData?.files||[])];if(fs.length){e.preventDefault();for(const f of fs)await addFile(f);chips()}});
 
 /* ---------- Envío con streaming ---------- */
-const VISION='qwen/qwen3.8-27b',clean=t=>t.replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
-function build(um){let tot=0;const keep=[];for(let i=hist.length-1;i>=0&&keep.length<20;i--){tot+=hist[i].content.length;if(tot>12000&&keep.length)break;keep.unshift(hist[i])}
-  const arr=[...keep,um],o=[];let n=0,has=false;
-  for(let i=arr.length-1;i>=0;i--){const m=arr[i];
-    if(i===arr.length-1&&m.imgs?.length&&n<4){const im=m.imgs.slice(0,4-n);n+=im.length;has=true;o.unshift({role:'user',content:[{type:'text',text:m.content},...im.map(u=>({type:'image_url',image_url:{url:u}}))]})}
-    else o.unshift({role:m.role,content:m.content})}
-  return{msgs:o,has}}
+const API='https://api.groq.com/openai/v1/chat/completions',VISION='qwen/qwen3.8-27b',clean=t=>t.replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
+const hdr=k=>({'Authorization':'Bearer '+k,'Content-Type':'application/json'});
+const save=()=>store.set('hist',JSON.stringify(hist.slice(-40),(k,v)=>k==='imgs'?undefined:v));
+/* El texto de archivos viejos se resume; solo el último archivo se conserva completo */
+function compact(){hist=hist.slice(-40);let last=-1;hist.forEach((m,i)=>{if(m.hasFile)last=i});hist.forEach((m,i)=>{if(m.hasFile&&i!==last&&m.short){m.content=m.short;m.hasFile=false}})}
+async function apiErr(res){let m='';try{m=(await res.json()).error?.message||''}catch(e){}
+  if(res.status===401){store.del('groq_key');openSettings();return'Tu clave de Groq no funciona. Pon una nueva en Ajustes.'}
+  if(res.status===429)return'Groq alcanzó el límite por ahora. Espera un minuto e intenta otra vez.'
+  if(res.status===413)return'Es demasiado texto para la cuenta gratuita de Groq. Manda algo más corto o empieza una conversación nueva (✎).'
+  return'Error '+res.status+': '+(m||'no se pudo conectar')}
+const SYS=()=>`Eres un asistente muy inteligente y práctico. Hoy es ${new Date().toLocaleDateString('es-MX',{dateStyle:'full'})}. Hablas en el idioma del usuario (español por defecto).
+
+ESTILO (lo más importante):
+- Contesta como una persona sensata hablando: primero la respuesta directa, en 1 a 3 frases. Agrega detalle solo si hace falta para decidir o actuar.
+- Prosa corta. Nada de listas largas, encabezados, tablas ni negritas decorativas. Usa lista solo para pasos que van en orden o para comparar opciones, y máximo 5 elementos cortos.
+- Si hay varias opciones, recomienda UNA y di por qué en una frase.
+- No repitas la pregunta ni pongas introducciones o cierres ("espero que te sirva", "¿quieres que…?").
+- Si falta un dato imprescindible, haz UNA sola pregunta. Si no, asume lo más probable y responde.
+
+CALIDAD:
+- Piensa antes de contestar. Si hay números, haz las cuentas con cuidado y revísalas; da el resultado, no todo el procedimiento, a menos que lo pidan.
+- No inventes datos, precios ni lugares. Si no sabes o no estás seguro, dilo en una frase.
+- Si tienes búsqueda en internet, úsala para datos actuales.
+
+FOTOS Y ARCHIVOS:
+- De las fotos recibes una descripción exacta de lo que se ve. Úsala, contesta lo que el usuario preguntó y no describas todo de nuevo.
+- Si adjunta un archivo, responde sobre su contenido concreto.
+- Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un solo bloque de código (nunca recortes con "...") y después una frase con lo que cambiaste.`+(store.get('ci','')?'\n\nInstrucciones personales del usuario: '+store.get('ci',''):'');
+async function see(imgs,ask,key){
+  const r=await fetch(API,{method:'POST',signal:ctrl.signal,headers:hdr(key),body:JSON.stringify({model:VISION,temperature:0.2,reasoning_effort:'none',max_completion_tokens:1500,
+    messages:[{role:'user',content:[{type:'text',text:'Mira la(s) imagen(es) y extrae con exactitud todo lo útil: cada texto, número, precio, tabla o etiqueta, y qué objetos o situación se ven. No inventes ni interpretes; si algo no se lee bien escribe [ilegible]. Pregunta del usuario (para saber qué detalles importan): '+ask},...imgs.map(u=>({type:'image_url',image_url:{url:u}}))]}]})});
+  if(!r.ok)throw new Error(await apiErr(r));
+  return clean((await r.json()).choices?.[0]?.message?.content||'').trim()}
+function build(um,direct){
+  let tot=0;const keep=[];
+  for(let i=hist.length-1;i>=0&&keep.length<20;i--){tot+=hist[i].content.length;if(tot>14000&&keep.length)break;keep.unshift(hist[i])}
+  const o=keep.map(m=>({role:m.role,content:m.content}));while(o.length&&o[0].role!=='user')o.shift();
+  const rem=um.hasFile?'\n\n(Si te pido cambiar el archivo, devuélvelo completo; si es solo una pregunta, responde corto y concreto.)':'\n\n(Responde corto y concreto, sin listas largas ni relleno.)';
+  if(direct&&um.imgs?.length)o.push({role:'user',content:[{type:'text',text:um.content+rem},...um.imgs.slice(0,4).map(u=>({type:'image_url',image_url:{url:u}}))]});
+  else o.push({role:'user',content:um.content+rem});
+  return o}
 async function send(text,redo){
-  if(busy)return;if(!redo){text=(text??q.value).trim();if(!text&&!pend.length)return}
+  if(busy)return;
+  if(!redo){text=(text??q.value).trim();if(!text&&!pend.length)return}
   const key=store.get('groq_key','');if(!key){openSettings();return}
-  let um;if(redo){um=redo}else{const files=pend.slice(),imgs=files.filter(f=>f.img).map(f=>f.img),docs=files.filter(f=>!f.img);
-  if(docs.length)lastFile=docs[docs.length-1];
-  if(!text)text=docs.length?'Revisa el archivo adjunto y dime qué contiene.':'¿Qué ves en esta imagen? Descríbela con detalle.';
-  const content=text+docs.map(f=>`\n\n[Archivo adjunto: ${f.name}]\n\`\`\`\n${f.text}\n\`\`\``).join('');
-  um={role:'user',content,show:text+files.map(f=>'\n📎 '+f.name).join(''),imgs};pend=[];chips()}
+  let um;
+  if(redo){um=redo}else{
+    const files=pend.slice(),imgs=files.filter(f=>f.img).map(f=>f.img),docs=files.filter(f=>!f.img);
+    if(docs.length)lastFile=docs[docs.length-1];
+    if(!text)text=docs.length?'Revisa el archivo y dime qué contiene, en pocas líneas.':'¿Qué ves en esta imagen? Dímelo en pocas líneas.';
+    um={role:'user',ask:text,imgs,hasFile:docs.length>0,
+      content:text+docs.map(f=>`\n\n[Archivo adjunto: ${f.name}]\n\`\`\`\n${f.text}\n\`\`\``).join(''),
+      short:text+docs.map(f=>`\n[Archivo: ${f.name} (ya revisado antes)]`).join(''),
+      show:text+files.map(f=>'\n📎 '+f.name).join('')};
+    pend=[];chips()}
   if(!hist.length)chat.innerHTML='';
   addUser(um.show,um.imgs);if(!redo){q.value='';q.style.height='auto'}
-  const d=document.createElement('div');d.className='a';d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';chat.appendChild(d);scroll();
+  const d=document.createElement('div');d.className='a';
+  d.innerHTML='<div class="think"><span class="dots"><i></i><i></i><i></i></span><span id="tk">Pensando…</span></div>';
+  chat.appendChild(d);scroll(true);
   busy=true;go.textContent='■';go.className='stop';ctrl=new AbortController();
   let out='',raf=0;
   const paint=()=>{raf=0;d.innerHTML=render(clean(out));scroll()};
   try{
-    const {msgs,has}=build(um),M=has?VISION:model();
-    const extra=M.startsWith('qwen')?{reasoning_effort:'none',max_completion_tokens:900}:{reasoning_effort:'low',max_completion_tokens:4000};
-    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',signal:ctrl.signal,
-      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-      body:JSON.stringify({model:M,stream:true,temperature:0.7,...extra,...(web&&M.startsWith('openai/')?{tools:[{type:'browser_search'}]}:{}),
-        messages:[{role:'system',content:'Eres un asistente de IA amable, inteligente y muy capaz. Hoy es '+new Date().toLocaleDateString('es-MX',{dateStyle:'full'})+'. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo, sin rodeos innecesarios. Explica paso a paso cuando ayude, usa formato Markdown (listas, negritas, bloques de código) cuando mejore la lectura y admite cuando no sepas algo. Si tienes búsqueda en internet disponible, úsala para datos actuales (precios, tiendas, noticias) y no inventes lugares ni datos. El usuario puede adjuntar fotos (puedes verlas) y archivos de texto o código. Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un único bloque de código (nunca recortes con "..."), y después explica brevemente qué cambiaste.'+(store.get('ci','')?' Instrucciones personales del usuario: '+store.get('ci',''):'')},...msgs]})});
-    if(!res.ok){let m='';try{m=(await res.json()).error?.message}catch(e){}
-      if(res.status===401){store.del('groq_key');openSettings()}
-      throw new Error('Error '+res.status+': '+(m||'no se pudo conectar'))}
+    const sel=model();let direct=false;
+    if(um.imgs?.length&&!um.desc){
+      if(sel===VISION)direct=true;
+      else{
+        const tk=d.querySelector('#tk');tk.textContent='Leyendo la foto…';
+        um.desc=(await see(um.imgs,um.ask,key)).slice(0,4000);
+        if(!um.desc)throw new Error('No pude leer la foto. Prueba con otra más clara.');
+        const b=`\n\n[Foto(s) adjunta(s). Lo que se ve: ${um.desc}]`;um.content+=b;um.short+=b;tk.textContent='Pensando…'}}
+    const M=direct?VISION:sel;
+    const extra=M===VISION?{reasoning_effort:'none',max_completion_tokens:2000}:{reasoning_effort:'medium',max_completion_tokens:4000};
+    const res=await fetch(API,{method:'POST',signal:ctrl.signal,headers:hdr(key),
+      body:JSON.stringify({model:M,stream:true,temperature:0.4,...extra,...(web&&M.startsWith('openai/')?{tools:[{type:'browser_search'}]}:{}),
+        messages:[{role:'system',content:SYS()},...build(um,direct)]})});
+    if(!res.ok)throw new Error(await apiErr(res));
     const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
     for(;;){const {done,value}=await rd.read();if(done)break;
       buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
@@ -215,11 +293,11 @@ async function send(text,redo){
         try{const c=JSON.parse(p).choices?.[0]?.delta?.content;if(c){out+=c;if(!raf)raf=requestAnimationFrame(paint)}}catch(e){}}}
   }catch(err){
     if(err.name==='AbortError'){out+=out?'\n\n_(detenido)_':'_(detenido)_'}
-    else if(!out){out='⚠️ '+(err.message==='Failed to fetch'?'Error de conexión.':err.message)}
+    else if(!out){out='⚠️ '+(err.message==='Failed to fetch'?'Sin conexión. Revisa tu internet.':err.message)}
   }
   cancelAnimationFrame(raf);out=clean(out);
-  d.innerHTML=render(out||'_(sin respuesta)_');
-  if(out&&!out.startsWith('⚠️')){hist.push(um,{role:'assistant',content:out});store.set('hist',JSON.stringify(hist.slice(-40),(k,v)=>k==='imgs'?undefined:v));actions(d,out)}
+  d.innerHTML=render(out||'_(No alcancé a responder. Intenta otra vez o con una pregunta más corta.)_');
+  if(out&&!out.startsWith('⚠️')){hist.push(um,{role:'assistant',content:out});compact();save();actions(d,out)}
   busy=false;go.textContent='➤';go.className='';scroll();
 }
 /* ---------- Actualizaciones ---------- */
