@@ -205,7 +205,7 @@
       let k = null;
       try { k = localStorage.getItem('groq_key'); } catch (e) {}
       if (!k) {
-        k = (prompt('Pega tu clave de Groq (se guarda solo en este teléfono):') || '').trim();
+        k = (prompt('Pega tu clave de Groq (se guarda solo en este teléfono):') || '').replace(/[\s"']/g, '');
         if (k) { try { localStorage.setItem('groq_key', k); } catch (e) {} }
       }
       return k;
@@ -285,8 +285,9 @@
         if (data.choices?.[0]) {
           addMsg(data.choices[0].message.content, 'ai');
         } else {
-          try { localStorage.removeItem('groq_key'); } catch (e) {}
-          addMsg("Error: la clave no es válida. Se borró; vuelve a intentar para pegar una nueva.", 'ai');
+          const msg = data.error?.message || JSON.stringify(data);
+          if (res.status === 401) { try { localStorage.removeItem('groq_key'); } catch (e) {} }
+          addMsg("Error " + res.status + ": " + msg, 'ai');
         }
       } catch (err) {
         loading.remove();
