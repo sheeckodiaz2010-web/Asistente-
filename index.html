@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Dulcería IA • Sabinas</title>
+  <title>Asistente IA</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -76,6 +76,7 @@
       gap: 12px;
     }
     .msg {
+      white-space: pre-wrap;
       max-width: 85%;
       padding: 12px 16px;
       border-radius: 18px;
@@ -160,35 +161,35 @@
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 10 6 6"/><path d="m14 10-6 6"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
     </div>
     <div class="title">
-      <h1>Dulcería IA</h1>
-      <p>Sabinas • Tu asistente</p>
+      <h1>Asistente IA</h1>
+      <p>Pregúntame lo que sea</p>
     </div>
   </header>
 
   <div class="actions">
-    <button class="action-btn imagen" onclick="accion('imagen')">
+    <button class="action-btn imagen" onclick="preguntaRapida('Explícame algo interesante que casi nadie sabe, de forma sencilla')">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-      Imagen
+      Explicar
     </button>
 
-    <button class="action-btn foto" onclick="document.getElementById('file').click()">
+    <button class="action-btn foto" onclick="preguntaRapida('Ayúdame a redactar un mensaje claro y amable para...')">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-      Foto WA
+      Redactar
     </button>
 
-    <button class="action-btn ideas" onclick="preguntaRapida('Dame 5 ideas de promociones para esta semana en la dulcería')">
+    <button class="action-btn ideas" onclick="preguntaRapida('Dame 5 ideas creativas para un proyecto o negocio pequeño')">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
       Ideas
     </button>
 
-    <button class="action-btn regalos" onclick="preguntaRapida('¿Qué dulces recomiendas para regalo y a qué precio aproximadamente?')">
+    <button class="action-btn regalos" onclick="preguntaRapida('Ayúdame a resolver un problema paso a paso')">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
-      Regalos
+      Resolver
     </button>
   </div>
 
   <div id="chat">
-    <div class="msg system">Listo. Pregúntame lo que necesites para la dulcería.</div>
+    <div class="msg system">Hola 👋 Pregúntame lo que quieras: explicaciones, ideas, textos, código, traducciones…</div>
   </div>
 
   <div class="input-area">
@@ -198,7 +199,7 @@
     </button>
   </div>
 
-  <input type="file" id="file" accept="image/*">
+  
 
   <script>
     function getKey() {
@@ -211,6 +212,7 @@
       return k;
     }
 
+    const historial = [];
     const chat = document.getElementById('chat');
     const input = document.getElementById('q');
     const sendBtn = document.getElementById('send');
@@ -270,12 +272,13 @@
             messages: [
               {
                 role: "system",
-                content: "Eres el asistente oficial de una dulcería en Sabinas, Coahuila, México. Te llamas DIGARAI. Responde siempre en español mexicano, de forma amable, clara y útil. Ayuda con precios aproximados, promociones, recomendaciones de dulces, ideas de empaque, WhatsApp, inventario y atención al cliente. Sé práctico y directo."
+                content: "Eres un asistente de IA amable, inteligente y muy capaz. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo; explica paso a paso cuando ayude y admite cuando no sepas algo. Puedes ayudar con cualquier tema: dudas, escritura, ideas, estudio, código, traducciones, análisis y consejos prácticos."
               },
-              { role: "user", content: q }
+              ...historial.slice(-20), { role: "user", content: q }
             ],
             temperature: 0.7,
-            max_tokens: 800
+            reasoning_effort: "low",
+            max_completion_tokens: 2000
           })
         });
 
@@ -283,7 +286,9 @@
         loading.remove();
 
         if (data.choices?.[0]) {
-          addMsg(data.choices[0].message.content, 'ai');
+          const r = data.choices[0].message.content || '';
+          historial.push({ role: 'user', content: q }, { role: 'assistant', content: r });
+          addMsg(r, 'ai');
         } else {
           const msg = data.error?.message || JSON.stringify(data);
           if (res.status === 401) { try { localStorage.removeItem('groq_key'); } catch (e) {} }
@@ -303,41 +308,6 @@
       preguntar();
     }
 
-    function accion(tipo) {
-      if (tipo === 'imagen') {
-        const prompt = prompt("¿Qué imagen quieres generar?\nEjemplo: bolsa de kisses sobre mesa de madera");
-        if (prompt) {
-          window.open("https://huggingface.co/spaces/black-forest-labs/FLUX.1-schnell?prompt=" + encodeURIComponent(prompt), "_blank");
-        }
-      }
-    }
-
-    document.getElementById('file').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1080;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, 1080, 1080);
-        const scale = Math.min(1080 / img.width, 1080 / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (1080 - w)/2, (1080 - h)/2, w, h);
-
-        const a = document.createElement('a');
-        a.download = 'foto_whatsapp_1080.jpg';
-        a.href = canvas.toDataURL('image/jpeg', 0.92);
-        a.click();
-        addMsg("✅ Foto convertida a 1080×1080 lista para WhatsApp", 'system');
-      };
-      img.src = URL.createObjectURL(file);
-      e.target.value = '';
-    });
   </script>
 </body>
 </html>
