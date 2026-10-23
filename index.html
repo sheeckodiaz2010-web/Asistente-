@@ -117,7 +117,7 @@ textarea:focus{border-color:var(--acc)}
   <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
 </div></div>
 <script>
-const VERSION='2026-10-23-5';
+const VERSION='2026-10-23-6';
 const $=s=>document.querySelector(s);
 const chat=$('#chat'),q=$('#q'),go=$('#go'),md=$('#md');
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
@@ -251,7 +251,7 @@ function compact(){hist=hist.slice(-40);let last=-1;hist.forEach((m,i)=>{if(m.ha
 async function apiErr(res){let m='';try{m=(await res.json()).error?.message||''}catch(e){}
   const G=prov()==='gemini',N=G?'Gemini':'Groq';
   if(res.status===401||/api key not valid|API_KEY_INVALID/i.test(m)){store.del(G?'gem_key':'groq_key');openSettings();return'Tu clave de '+N+' no funciona. Pon una nueva en Ajustes.'}
-  if(res.status===404&&G)return'Ese modelo de Gemini no está disponible. Deja el campo vacío o elige otro en Ajustes.'
+  if(res.status===404&&G)return'Ese modelo de Gemini no está disponible. Deja el campo vacío o elige otro en Ajustes.'+(m?' ('+m.slice(0,150)+')':'')
   if(res.status===429)return N+' alcanzó el límite gratis por ahora. Espera un minuto e intenta otra vez, o cambia de proveedor en Ajustes.'
   if(res.status===413)return'Es demasiado texto para este modelo. Manda algo más corto o empieza una conversación nueva (✎).'
   return'Error '+res.status+': '+(m||'no se pudo conectar')}
@@ -271,7 +271,7 @@ async function groq(o){
   return sse(res,j=>j.choices?.[0]?.delta?.content,o.onTok)}
 async function gemini(o){
   const contents=o.msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content},...(m.imgs||[]).slice(0,8).map(u=>({inlineData:{mimeType:'image/jpeg',data:u.split(',')[1]}}))]}));
-  const body=JSON.stringify({systemInstruction:{parts:[{text:o.sys}]},contents,generationConfig:{temperature:o.temp??0.4,maxOutputTokens:o.max||16000},...(o.web?{tools:[{google_search:{}}]}:{})});
+  let useWeb=!!o.web;const mk=()=>JSON.stringify({systemInstruction:{parts:[{text:o.sys}]},contents,generationConfig:{temperature:o.temp??0.4,maxOutputTokens:o.max||16000},...(useWeb?{tools:[{google_search:{}}]}:{})});
   const headers={'x-goog-api-key':store.get('gem_key',''),'Content-Type':'application/json'};
   /* Si el modelo está saturado (503) reintenta y, si sigue igual, prueba otro modelo */
   const tried=[gm(),'gemini-2.5-flash','gemini-2.5-flash-lite'].filter((m,i,a)=>a.indexOf(m)===i);
@@ -281,10 +281,11 @@ async function gemini(o){
       const tk=document.querySelector('#tk');if(tk)tk.textContent=first?'Pensando…':'Reintentando…';first=false;
       const c=new AbortController(),onAb=()=>c.abort();ctrl.signal.addEventListener('abort',onAb);
       const to=setTimeout(()=>c.abort(),30000);
-      try{res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(m)+':streamGenerateContent?alt=sse',{method:'POST',signal:c.signal,headers,body})}
+      try{res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(m)+':streamGenerateContent?alt=sse',{method:'POST',signal:c.signal,headers,body:mk()})}
       catch(e){if(ctrl.signal.aborted)throw e;res=null}
       clearTimeout(to);
       if(res&&res.ok)return sse(res,j=>(j.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join(''),o.onTok);
+      if(res&&useWeb&&(res.status===400||res.status===404)){useWeb=false;toast('La búsqueda en internet falló; respondo sin ella.');t--;continue}
       if(res&&![500,502,503,504,429,404].includes(res.status))throw new Error(await apiErr(res));
       if(res&&(res.status===429||res.status===404))break; /* otro modelo tiene su propio cupo */
       await new Promise(r=>setTimeout(r,1500));
