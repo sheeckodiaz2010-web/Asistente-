@@ -45,6 +45,13 @@ textarea:focus{border-color:var(--acc)}
 .box input,.box select{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 12px;font:inherit}
 .row{display:flex;gap:8px;margin-top:16px}.row button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit}
 .row .p{background:var(--acc);border-color:var(--acc);color:#fff}
+.bar{flex-wrap:wrap}
+#chips{display:none;flex-basis:100%;gap:8px;flex-wrap:wrap}#chips.on{display:flex}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px 10px;font-size:13px;max-width:100%}
+.chip img{width:28px;height:28px;border-radius:6px;object-fit:cover}.chip b{color:var(--mute);cursor:pointer;padding:0 2px}
+#at{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:19px;flex:none;cursor:pointer}
+.u img{display:block;max-width:100%;max-height:200px;border-radius:12px;margin-bottom:8px}
+.dl{position:absolute;top:6px;right:68px;font-size:12px;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--mute)}
 </style>
 </head>
 <body>
@@ -56,6 +63,9 @@ textarea:focus{border-color:var(--acc)}
 </header>
 <div id="chat"></div>
 <div class="bar">
+  <div id="chips"></div>
+  <button id="at" title="Adjuntar foto o archivo">📎</button>
+  <input id="fi" type="file" multiple hidden accept="image/*,text/*,.md,.csv,.json,.html,.css,.js,.jsx,.ts,.tsx,.py,.xml,.yaml,.yml,.sql,.sh,.java,.c,.cpp,.php,.log,.txt">
   <textarea id="q" rows="1" placeholder="Escribe aquí…"></textarea>
   <button id="go" title="Enviar">➤</button>
 </div>
@@ -66,6 +76,7 @@ textarea:focus{border-color:var(--acc)}
   <label>Modelo</label>
   <select id="ml">
     <option value="openai/gpt-oss-120b">GPT-OSS 120B · más inteligente</option>
+    <option value="qwen/qwen3.8-27b">Qwen 3.8 27B · lee imágenes</option>
     <option value="openai/gpt-oss-20b">GPT-OSS 20B · más rápido</option>
   </select>
   <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
@@ -103,18 +114,24 @@ function block(t){
   return o.join('');
 }
 function render(t){return t.split('```').map((p,i)=>{
-  if(i%2){const nl=p.indexOf('\n');const code=nl<0?p:p.slice(nl+1);return `<pre><button class="cp">Copiar</button><code>${esc(code.replace(/\n$/,''))}</code></pre>`}
+  if(i%2){const nl=p.indexOf('\n');const code=nl<0?p:p.slice(nl+1);return `<pre><button class="dl" data-l="${esc(nl<0?'':p.slice(0,nl).trim())}">Descargar</button><button class="cp">Copiar</button><code>${esc(code.replace(/\n$/,''))}</code></pre>`}
   return block(p)}).join('')}
 
 /* ---------- UI ---------- */
 function scroll(){chat.scrollTop=chat.scrollHeight}
-function addUser(t){const d=document.createElement('div');d.className='u';d.textContent=t;chat.appendChild(d)}
+function addUser(t,imgs){const d=document.createElement('div');d.className='u';(imgs||[]).forEach(u=>{const i=new Image();i.src=u;d.appendChild(i)});d.appendChild(document.createTextNode(t));chat.appendChild(d)}
 function addAI(t){const d=document.createElement('div');d.className='a';d.innerHTML=render(t);chat.appendChild(d);return d}
 function actions(d,t){const a=document.createElement('div');a.className='act';a.innerHTML='<button>Copiar respuesta</button>';a.firstChild.onclick=e=>{navigator.clipboard?.writeText(t);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar respuesta',1500)};d.appendChild(a)}
 function hero(){chat.innerHTML=`<div id="hero"><h2>¿En qué te ayudo?</h2><p>Pregúntame lo que quieras</p><div class="sg">${SUG.map((s,i)=>`<button data-i="${i}"><b>${s[0]}</b>${s[1]}</button>`).join('')}</div></div>`;
   chat.querySelectorAll('.sg button').forEach(b=>b.onclick=()=>send(SUG[b.dataset.i][1]))}
-function load(){chat.innerHTML='';if(!hist.length)return hero();hist.forEach(m=>{if(m.role==='user')addUser(m.content);else{const d=addAI(m.content);actions(d,m.content)}});scroll()}
-chat.addEventListener('click',e=>{if(e.target.classList.contains('cp')){navigator.clipboard?.writeText(e.target.nextSibling.textContent);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar',1500)}});
+function load(){chat.innerHTML='';if(!hist.length)return hero();hist.forEach(m=>{if(m.role==='user')addUser(m.show||m.content);else{const d=addAI(m.content);actions(d,m.content)}});scroll()}
+const EXT={javascript:'js',python:'py',typescript:'ts',markdown:'md',bash:'sh',shell:'sh',yml:'yaml',csharp:'cs'};
+chat.addEventListener('click',e=>{
+  if(e.target.classList.contains('dl')){const l=(e.target.dataset.l||'').toLowerCase();const ext=/^[a-z0-9]+$/.test(l)?(EXT[l]||l):'txt';
+    const name=lastFile?.name||('archivo.'+ext);const b=new Blob([e.target.nextSibling.nextSibling.textContent],{type:'text/plain'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();return}
+if(e.target.classList.contains('cp')){navigator.clipboard?.writeText(e.target.nextSibling.textContent);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar',1500)}});
+let pend=[],lastFile=null;
 q.addEventListener('input',()=>{q.style.height='auto';q.style.height=Math.min(q.scrollHeight,140)+'px'});
 q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&innerWidth>700){e.preventDefault();send()}});
 go.onclick=()=>busy?ctrl.abort():send();
@@ -122,26 +139,56 @@ $('#nw').onclick=()=>{if(busy)ctrl.abort();hist=[];store.del('hist');load()};
 
 /* ---------- Ajustes ---------- */
 const model=()=>store.get('model','openai/gpt-oss-120b');
-function names(){$('#mn').textContent=model().includes('120')?'GPT-OSS 120B':'GPT-OSS 20B'}
+function names(){$('#mn').textContent={'openai/gpt-oss-120b':'GPT-OSS 120B','openai/gpt-oss-20b':'GPT-OSS 20B','qwen/qwen3.8-27b':'Qwen 3.8 27B'}[model()]||'Asistente'}
 function openSettings(){$('#ky').value=store.get('groq_key','');$('#ml').value=model();md.classList.add('on')}
 $('#st').onclick=openSettings;$('#cl').onclick=()=>md.classList.remove('on');
 $('#sv').onclick=()=>{const k=$('#ky').value.replace(/[\s"']/g,'');if(k)store.set('groq_key',k);store.set('model',$('#ml').value);md.classList.remove('on');names()};
 
+/* ---------- Adjuntos ---------- */
+function chips(){const c=$('#chips');c.innerHTML='';pend.forEach((f,i)=>{const t=document.createElement('span');t.className='chip';t.innerHTML=(f.img?`<img src="${f.img}">`:'📄 ')+esc(f.name)+` <b data-i="${i}">✕</b>`;c.appendChild(t)});c.classList.toggle('on',pend.length>0)}
+$('#chips').onclick=e=>{if(e.target.tagName==='B'){pend.splice(+e.target.dataset.i,1);chips()}};
+$('#at').onclick=()=>$('#fi').click();
+function shrink(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.85))};im.onerror=no;im.src=u})}
+$('#fi').onchange=async e=>{
+  for(const f of e.target.files){
+    try{
+      if(f.type.startsWith('image/')){if(pend.filter(x=>x.img).length>=4){alert('Máximo 4 fotos por mensaje.');continue}pend.push({name:f.name||'foto.jpg',img:await shrink(f)})}
+      else{if(f.size>1e6||/pdf|zip|word|excel|sheet|octet/.test(f.type)){alert('"'+f.name+'": por ahora solo fotos y archivos de texto o código (hasta 1 MB).');continue}
+        let t=await f.text();if(t.includes('\u0000')){alert('"'+f.name+'" no es un archivo de texto.');continue}
+        if(t.length>60000)t=t.slice(0,60000)+'\n…(archivo recortado)';pend.push({name:f.name,text:t})}
+    }catch(err){alert('No pude leer "'+f.name+'".')}
+  }
+  e.target.value='';chips()};
+
 /* ---------- Envío con streaming ---------- */
+const VISION='qwen/qwen3.8-27b',clean=t=>t.replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
+function build(um){const arr=[...hist.slice(-20),um],o=[];let n=0,has=false;
+  for(let i=arr.length-1;i>=0;i--){const m=arr[i];
+    if(m.imgs?.length&&n<4){const im=m.imgs.slice(0,4-n);n+=im.length;has=true;o.unshift({role:'user',content:[{type:'text',text:m.content},...im.map(u=>({type:'image_url',image_url:{url:u}}))]})}
+    else o.unshift({role:m.role,content:m.content})}
+  return{msgs:o,has}}
 async function send(text){
-  text=(text??q.value).trim();if(!text||busy)return;
+  text=(text??q.value).trim();if(busy||(!text&&!pend.length))return;
   const key=store.get('groq_key','');if(!key){openSettings();return}
+  const files=pend.slice(),imgs=files.filter(f=>f.img).map(f=>f.img),docs=files.filter(f=>!f.img);
+  if(docs.length)lastFile=docs[docs.length-1];
+  if(!text)text=docs.length?'Revisa el archivo adjunto y dime qué contiene.':'¿Qué ves en esta imagen? Descríbela con detalle.';
+  const content=text+docs.map(f=>`\n\n[Archivo adjunto: ${f.name}]\n\`\`\`\n${f.text}\n\`\`\``).join('');
+  const um={role:'user',content,show:text+files.map(f=>'\n📎 '+f.name).join(''),imgs};
+  pend=[];chips();
   if(!hist.length)chat.innerHTML='';
-  addUser(text);q.value='';q.style.height='auto';
+  addUser(um.show,imgs);q.value='';q.style.height='auto';
   const d=document.createElement('div');d.className='a';d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';chat.appendChild(d);scroll();
   busy=true;go.textContent='■';go.className='stop';ctrl=new AbortController();
   let out='',raf=0;
-  const paint=()=>{raf=0;d.innerHTML=render(out);scroll()};
+  const paint=()=>{raf=0;d.innerHTML=render(clean(out));scroll()};
   try{
+    const {msgs,has}=build(um),M=has?VISION:model();
+    const extra=M.startsWith('qwen')?{reasoning_format:'hidden',max_completion_tokens:8000}:{reasoning_effort:'low',max_completion_tokens:4000};
     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',signal:ctrl.signal,
       headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-      body:JSON.stringify({model:model(),stream:true,temperature:0.7,reasoning_effort:'low',max_completion_tokens:4000,
-        messages:[{role:'system',content:'Eres un asistente de IA amable, inteligente y muy capaz. Hoy es '+new Date().toLocaleDateString('es-MX',{dateStyle:'full'})+'. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo, sin rodeos innecesarios. Explica paso a paso cuando ayude, usa formato Markdown (listas, negritas, bloques de código) cuando mejore la lectura y admite cuando no sepas algo.'},...hist.slice(-20),{role:'user',content:text}]})});
+      body:JSON.stringify({model:M,stream:true,temperature:0.7,...extra,
+        messages:[{role:'system',content:'Eres un asistente de IA amable, inteligente y muy capaz. Hoy es '+new Date().toLocaleDateString('es-MX',{dateStyle:'full'})+'. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo, sin rodeos innecesarios. Explica paso a paso cuando ayude, usa formato Markdown (listas, negritas, bloques de código) cuando mejore la lectura y admite cuando no sepas algo. El usuario puede adjuntar fotos (puedes verlas) y archivos de texto o código. Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un único bloque de código (nunca recortes con "..."), y después explica brevemente qué cambiaste.'},...msgs]})});
     if(!res.ok){let m='';try{m=(await res.json()).error?.message}catch(e){}
       if(res.status===401){store.del('groq_key');openSettings()}
       throw new Error('Error '+res.status+': '+(m||'no se pudo conectar'))}
@@ -154,10 +201,9 @@ async function send(text){
     if(err.name==='AbortError'){out+=out?'\n\n_(detenido)_':'_(detenido)_'}
     else if(!out){out='⚠️ '+(err.message==='Failed to fetch'?'Error de conexión.':err.message)}
   }
-  cancelAnimationFrame(raf);
+  cancelAnimationFrame(raf);out=clean(out);
   d.innerHTML=render(out||'_(sin respuesta)_');
-  if(out&&!out.startsWith('⚠️')){hist.push({role:'user',content:text},{role:'assistant',content:out});store.set('hist',JSON.stringify(hist.slice(-40)));actions(d,out)}
-  else if(out.startsWith('⚠️')&&!hist.length){/* error en primer mensaje: no guardar */}
+  if(out&&!out.startsWith('⚠️')){hist.push(um,{role:'assistant',content:out});store.set('hist',JSON.stringify(hist.slice(-40),(k,v)=>k==='imgs'?undefined:v));actions(d,out)}
   busy=false;go.textContent='➤';go.className='';scroll();
 }
 names();load();
