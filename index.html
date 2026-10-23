@@ -61,6 +61,11 @@ textarea:focus{border-color:var(--acc)}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:9px 14px;border-radius:12px;font-size:14px;max-width:90%;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s;text-align:center}
 #toast.on{opacity:1}
 .think{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:14px}
+.rvt{color:var(--mute);font-size:13px;margin-top:6px}
+.box{max-height:92vh;overflow-y:auto}
+.box label.ck{display:flex;gap:8px;align-items:flex-start;color:var(--mute);font-size:13px;margin:14px 0 0}
+.box input[type=checkbox]{width:auto;margin-top:3px}
+.hint{font-size:12px;color:var(--mute);margin-top:6px}
 </style>
 </head>
 <body>
@@ -83,21 +88,36 @@ textarea:focus{border-color:var(--acc)}
 </div>
 <div id="md"><div class="box">
   <h3>Ajustes</h3>
-  <label>Clave de Groq (se guarda solo en este dispositivo)</label>
-  <input id="ky" type="password" placeholder="gsk_..." autocomplete="off">
-  <label>Modelo</label>
-  <select id="ml">
+  <label>Proveedor de IA</label>
+  <select id="pv">
+    <option value="groq">Groq · rápido, límites chicos</option>
+    <option value="gemini">Gemini · mejor para fotos y archivos largos</option>
+  </select>
+  <div id="gq">
+    <label>Clave de Groq (se guarda solo en este dispositivo)</label>
+    <input id="ky" type="password" placeholder="gsk_..." autocomplete="off">
+    <label>Modelo</label>
+    <select id="ml">
     <option value="openai/gpt-oss-120b">GPT-OSS 120B · más inteligente</option>
     <option value="qwen/qwen3.8-27b">Qwen 3.8 27B · lee imágenes</option>
     <option value="openai/gpt-oss-20b">GPT-OSS 20B · más rápido</option>
   </select>
-  <label>Instrucciones personales (opcional: tu nombre, tono, cómo quieres las respuestas)</label>
+  </div>
+  <div id="gmw">
+    <label>Clave de Gemini (gratis en aistudio.google.com/apikey)</label>
+    <input id="gk" type="password" placeholder="AIza..." autocomplete="off">
+    <label>Modelo de Gemini (vacío = el más reciente)</label>
+    <input id="gmd" list="gml" placeholder="gemini-flash-latest" autocomplete="off"><datalist id="gml"></datalist>
+    <div class="hint">En el nivel gratis de Gemini, Google puede usar lo que envíes para mejorar sus productos. Evita datos delicados de clientes.</div>
+  </div>
+  <label class="ck"><input type="checkbox" id="rv"><span>Revisar las respuestas con números antes de darlas por buenas (tarda un poco más)</span></label>
+  <label>Contexto e instrucciones personales (quién eres, tu negocio, cómo quieres las respuestas)</label>
   <textarea id="ci" placeholder="Ej: Me llamo Ana. Respóndeme corto y con ejemplos."></textarea>
   <div class="ver">Versión <span id="vv"></span></div>
   <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
 </div></div>
 <script>
-const VERSION='2026-10-23-3';
+const VERSION='2026-10-23-4';
 const $=s=>document.querySelector(s);
 const chat=$('#chat'),q=$('#q'),go=$('#go'),md=$('#md');
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
@@ -156,14 +176,29 @@ go.onclick=()=>busy?ctrl.abort():send();
 $('#nw').onclick=()=>{if(busy)ctrl.abort();hist=[];store.del('hist');load()};
 
 /* ---------- Ajustes ---------- */
+const DEF_CI="Soy Sergio. Tengo un negocio de dulces en Sabinas, Coahuila (México): compro a mayoreo (Monterrey, Castillo del Dulce, Sam's Club) y vendo de lunes a viernes. Uso un POS propio (DIGAR) y un catálogo mayorista. Hablo español de México y manejo pesos. Quiero respuestas cortas y directas.";
+const prov=()=>store.get('prov','groq');
 const model=()=>store.get('model','openai/gpt-oss-120b');
-function names(){$('#mn').textContent={'openai/gpt-oss-120b':'GPT-OSS 120B','openai/gpt-oss-20b':'GPT-OSS 20B','qwen/qwen3.8-27b':'Qwen 3.8 27B'}[model()]||'Asistente'}
-function openSettings(){$('#ky').value=store.get('groq_key','');$('#ci').value=store.get('ci','');$('#vv').textContent=VERSION;$('#ml').value=model();md.classList.add('on')}
+const gm=()=>store.get('gmd','')||'gemini-flash-latest';
+const maxImg=()=>prov()==='gemini'?8:4;
+const lim=()=>prov()==='gemini'?300000:12000;
+const keyOf=()=>store.get(prov()==='gemini'?'gem_key':'groq_key','');
+function names(){$('#mn').textContent=prov()==='gemini'?'Gemini · '+gm().replace(/^gemini-/,''):({'openai/gpt-oss-120b':'GPT-OSS 120B','openai/gpt-oss-20b':'GPT-OSS 20B','qwen/qwen3.8-27b':'Qwen 3.8 27B'}[model()]||'Asistente')}
+function pvShow(){const g=$('#pv').value==='gemini';$('#gq').style.display=g?'none':'';$('#gmw').style.display=g?'':'none'}
+async function gemModels(){const k=($('#gk').value||'').replace(/[\s"']/g,'')||store.get('gem_key','');if(!k)return;
+  try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100',{headers:{'x-goog-api-key':k}});if(!r.ok)return;
+    const ms=(await r.json()).models||[];
+    $('#gml').innerHTML=ms.filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/gemini/.test(m.name)&&!/(image|tts|live|embedding|robotics|computer|audio|native)/.test(m.name)).map(m=>`<option value="${m.name.replace('models/','')}">`).join('')}catch(e){}}
+function openSettings(){$('#pv').value=prov();$('#ky').value=store.get('groq_key','');$('#gk').value=store.get('gem_key','');$('#ml').value=model();$('#gmd').value=store.get('gmd','');$('#rv').checked=store.get('rv','1')==='1';$('#ci').value=store.get('ci',DEF_CI);$('#vv').textContent=VERSION;pvShow();md.classList.add('on');gemModels()}
+$('#pv').onchange=pvShow;
 $('#st').onclick=openSettings;$('#cl').onclick=()=>md.classList.remove('on');
-$('#sv').onclick=()=>{const k=$('#ky').value.replace(/[\s"']/g,'');if(k)store.set('groq_key',k);store.set('model',$('#ml').value);store.set('ci',$('#ci').value.trim());md.classList.remove('on');names()};
+$('#sv').onclick=()=>{const cl=v=>v.replace(/[\s"']/g,'');const k=cl($('#ky').value),g=cl($('#gk').value);
+  if(k)store.set('groq_key',k);if(g)store.set('gem_key',g);
+  store.set('prov',$('#pv').value);store.set('model',$('#ml').value);store.set('gmd',cl($('#gmd').value));store.set('rv',$('#rv').checked?'1':'0');store.set('ci',$('#ci').value.trim());
+  md.classList.remove('on');names()};
 
 /* ---------- Adjuntos ---------- */
-const LIM=12000,CDN='https://cdnjs.cloudflare.com/ajax/libs/',libs={};
+const CDN='https://cdnjs.cloudflare.com/ajax/libs/',libs={};
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3800)}
 const imgN=()=>pend.filter(x=>x.img).length;
 function lib(u){return libs[u]||(libs[u]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{delete libs[u];no(new Error('no pude cargar el lector, revisa tu internet'))};document.head.appendChild(s)}))}
@@ -178,9 +213,9 @@ function shrink(f){return new Promise((ok,no)=>{const u=URL.createObjectURL(f),i
 async function readPDF(f){
   await lib(CDN+'pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
   const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';
-  for(let i=1;i<=pdf.numPages&&t.length<LIM+500;i++){const c=await(await pdf.getPage(i)).getTextContent();t+='\n--- Página '+i+' ---\n'+c.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('')}
+  for(let i=1;i<=pdf.numPages&&t.length<lim()+500;i++){const c=await(await pdf.getPage(i)).getTextContent();t+='\n--- Página '+i+' ---\n'+c.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('')}
   if(t.replace(/--- Página \d+ ---|\s/g,'').length<40){
-    const imgs=[];for(let i=1;i<=Math.min(pdf.numPages,4);i++){const p=await pdf.getPage(i),v=p.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;imgs.push(c.toDataURL('image/jpeg',.8))}
+    const imgs=[];for(let i=1;i<=Math.min(pdf.numPages,maxImg());i++){const p=await pdf.getPage(i),v=p.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;imgs.push(c.toDataURL('image/jpeg',.8))}
     return{imgs}}
   return{text:t}}
 async function readXLS(f){await lib(CDN+'xlsx/0.18.5/xlsx.full.min.js');const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});return wb.SheetNames.map(n=>'--- Hoja: '+n+' ---\n'+XLSX.utils.sheet_to_csv(wb.Sheets[n])).join('\n\n')}
@@ -189,7 +224,7 @@ async function readDOCX(f){await lib(CDN+'mammoth/1.6.0/mammoth.browser.min.js')
 async function addFile(f){
   const nm=f.name||'archivo',ext=(nm.split('.').pop()||'').toLowerCase();
   try{
-    if(f.type.startsWith('image/')){if(imgN()>=4){toast('Máximo 4 fotos por mensaje.');return}pend.push({name:f.name||'foto.jpg',img:await shrink(f)});return}
+    if(f.type.startsWith('image/')){if(imgN()>=maxImg()){toast('Máximo '+maxImg()+' fotos por mensaje.');return}pend.push({name:f.name||'foto.jpg',img:await shrink(f)});return}
     const bin=ext==='pdf'||/^xls[xm]?$/.test(ext)||ext==='docx';
     if(f.size>(bin?15e6:1e6)){toast('"'+nm+'" pesa demasiado.');return}
     let t,im;
@@ -198,26 +233,52 @@ async function addFile(f){
     else if(ext==='docx'){toast('Leyendo Word…');t=await readDOCX(f)}
     else if(/^(zip|rar|7z|doc|ppt|pptx|exe|apk)$/.test(ext)){toast('"'+nm+'": ese formato no lo puedo leer. Sirven PDF, Excel, Word, fotos y texto.');return}
     else{t=await f.text();if(t.includes('\u0000')){toast('"'+nm+'" no es un archivo de texto.');return}}
-    if(im){im.slice(0,4-imgN()).forEach((u,i)=>pend.push({name:nm+' (pág. '+(i+1)+')',img:u}));toast('PDF escaneado: leo las primeras páginas como foto.');return}
+    if(im){im.slice(0,Math.max(0,maxImg()-imgN())).forEach((u,i)=>pend.push({name:nm+' (pág. '+(i+1)+')',img:u}));toast('PDF escaneado: leo las primeras páginas como foto.');return}
     if(!t||!t.trim()){toast('"'+nm+'" está vacío.');return}
-    if(t.length>LIM){t=t.slice(0,LIM)+'\n…(recortado)';toast('"'+nm+'" es largo: solo leo los primeros '+LIM.toLocaleString('es-MX')+' caracteres.')}
+    if(t.length>lim()){t=t.slice(0,lim())+'\n…(recortado)';toast('"'+nm+'" es largo: solo leo los primeros '+lim().toLocaleString('es-MX')+' caracteres.')}
     pend.push({name:nm,text:t})
   }catch(err){toast('No pude leer "'+nm+'"'+(err.message?': '+err.message:'.'))}
 }
 $('#fi').onchange=async e=>{const fs=[...e.target.files];e.target.value='';for(const f of fs)await addFile(f);chips()};
 q.addEventListener('paste',async e=>{const fs=[...(e.clipboardData?.files||[])];if(fs.length){e.preventDefault();for(const f of fs)await addFile(f);chips()}});
 
-/* ---------- Envío con streaming ---------- */
+/* ---------- Proveedores de IA ---------- */
 const API='https://api.groq.com/openai/v1/chat/completions',VISION='qwen/qwen3.8-27b',clean=t=>t.replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
 const hdr=k=>({'Authorization':'Bearer '+k,'Content-Type':'application/json'});
 const save=()=>store.set('hist',JSON.stringify(hist.slice(-40),(k,v)=>k==='imgs'?undefined:v));
 /* El texto de archivos viejos se resume; solo el último archivo se conserva completo */
 function compact(){hist=hist.slice(-40);let last=-1;hist.forEach((m,i)=>{if(m.hasFile)last=i});hist.forEach((m,i)=>{if(m.hasFile&&i!==last&&m.short){m.content=m.short;m.hasFile=false}})}
 async function apiErr(res){let m='';try{m=(await res.json()).error?.message||''}catch(e){}
-  if(res.status===401){store.del('groq_key');openSettings();return'Tu clave de Groq no funciona. Pon una nueva en Ajustes.'}
-  if(res.status===429)return'Groq alcanzó el límite por ahora. Espera un minuto e intenta otra vez.'
-  if(res.status===413)return'Es demasiado texto para la cuenta gratuita de Groq. Manda algo más corto o empieza una conversación nueva (✎).'
+  const G=prov()==='gemini',N=G?'Gemini':'Groq';
+  if(res.status===401||/api key not valid|API_KEY_INVALID/i.test(m)){store.del(G?'gem_key':'groq_key');openSettings();return'Tu clave de '+N+' no funciona. Pon una nueva en Ajustes.'}
+  if(res.status===404&&G)return'Ese modelo de Gemini no está disponible. Deja el campo vacío o elige otro en Ajustes.'
+  if(res.status===429)return N+' alcanzó el límite gratis por ahora. Espera un minuto e intenta otra vez, o cambia de proveedor en Ajustes.'
+  if(res.status===413)return'Es demasiado texto para este modelo. Manda algo más corto o empieza una conversación nueva (✎).'
   return'Error '+res.status+': '+(m||'no se pudo conectar')}
+async function sse(res,pick,onTok){const rd=res.body.getReader(),dec=new TextDecoder();let buf='',out='';
+  for(;;){const {done,value}=await rd.read();if(done)break;
+    buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
+    for(const l of ls){if(!l.startsWith('data:'))continue;const p=l.slice(5).trim();if(p==='[DONE]')continue;
+      try{const c=pick(JSON.parse(p));if(c){out+=c;onTok&&onTok(out)}}catch(e){}}}
+  return out}
+async function groq(o){
+  const M=model(),vis=M===VISION;
+  const extra=vis?{reasoning_effort:'none',max_completion_tokens:o.max||2000}:{reasoning_effort:o.effort||'medium',max_completion_tokens:o.max||4000};
+  const msgs=o.msgs.map(m=>m.imgs?.length&&vis?{role:m.role,content:[{type:'text',text:m.content},...m.imgs.slice(0,4).map(u=>({type:'image_url',image_url:{url:u}}))]}:{role:m.role,content:m.content});
+  const res=await fetch(API,{method:'POST',signal:ctrl.signal,headers:hdr(store.get('groq_key','')),
+    body:JSON.stringify({model:M,stream:true,temperature:o.temp??0.4,...extra,...(o.web&&M.startsWith('openai/')?{tools:[{type:'browser_search'}]}:{}),messages:[{role:'system',content:o.sys},...msgs]})});
+  if(!res.ok)throw new Error(await apiErr(res));
+  return sse(res,j=>j.choices?.[0]?.delta?.content,o.onTok)}
+async function gemini(o){
+  const contents=o.msgs.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content},...(m.imgs||[]).slice(0,8).map(u=>({inlineData:{mimeType:'image/jpeg',data:u.split(',')[1]}}))]}));
+  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(gm())+':streamGenerateContent?alt=sse',{method:'POST',signal:ctrl.signal,
+    headers:{'x-goog-api-key':store.get('gem_key',''),'Content-Type':'application/json'},
+    body:JSON.stringify({systemInstruction:{parts:[{text:o.sys}]},contents,generationConfig:{temperature:o.temp??0.4,maxOutputTokens:o.max||16000},...(o.web?{tools:[{google_search:{}}]}:{})})});
+  if(!res.ok)throw new Error(await apiErr(res));
+  return sse(res,j=>(j.candidates?.[0]?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join(''),o.onTok)}
+const llm=o=>prov()==='gemini'?gemini(o):groq(o);
+
+const DEFCI=()=>store.get('ci',DEF_CI);
 const SYS=()=>`Eres un asistente muy inteligente y práctico. Hoy es ${new Date().toLocaleDateString('es-MX',{dateStyle:'full'})}. Hablas en el idioma del usuario (español por defecto).
 
 ESTILO (lo más importante):
@@ -233,26 +294,27 @@ CALIDAD:
 - Si tienes búsqueda en internet, úsala para datos actuales.
 
 FOTOS Y ARCHIVOS:
-- De las fotos recibes una descripción exacta de lo que se ve. Úsala, contesta lo que el usuario preguntó y no describas todo de nuevo.
+- Las fotos las ves directamente o recibes una descripción exacta de lo que se ve. Lee con cuidado textos y cifras, contesta lo que el usuario preguntó y no describas todo de nuevo.
 - Si adjunta un archivo, responde sobre su contenido concreto.
-- Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un solo bloque de código (nunca recortes con "...") y después una frase con lo que cambiaste.`+(store.get('ci','')?'\n\nInstrucciones personales del usuario: '+store.get('ci',''):'');
-async function see(imgs,ask,key){
-  const r=await fetch(API,{method:'POST',signal:ctrl.signal,headers:hdr(key),body:JSON.stringify({model:VISION,temperature:0.2,reasoning_effort:'none',max_completion_tokens:1500,
+- Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un solo bloque de código (nunca recortes con "...") y después una frase con lo que cambiaste.`+(DEFCI()?'\n\nContexto e instrucciones personales del usuario: '+DEFCI():'');
+const REVIEW='Revisa tu respuesta anterior como un auditor estricto: recalcula cada cuenta y verifica cada dato contra lo que dijo el usuario, los archivos, las fotos y la conversación. Si todo está bien, responde únicamente: OK. Si hay un error, responde únicamente con la respuesta corregida completa, con el mismo estilo corto y directo, sin mencionar la revisión.';
+async function see(imgs,ask){
+  const r=await fetch(API,{method:'POST',signal:ctrl.signal,headers:hdr(store.get('groq_key','')),body:JSON.stringify({model:VISION,temperature:0.2,reasoning_effort:'none',max_completion_tokens:1500,
     messages:[{role:'user',content:[{type:'text',text:'Mira la(s) imagen(es) y extrae con exactitud todo lo útil: cada texto, número, precio, tabla o etiqueta, y qué objetos o situación se ven. No inventes ni interpretes; si algo no se lee bien escribe [ilegible]. Pregunta del usuario (para saber qué detalles importan): '+ask},...imgs.map(u=>({type:'image_url',image_url:{url:u}}))]}]})});
   if(!r.ok)throw new Error(await apiErr(r));
   return clean((await r.json()).choices?.[0]?.message?.content||'').trim()}
 function build(um,direct){
-  let tot=0;const keep=[];
-  for(let i=hist.length-1;i>=0&&keep.length<20;i--){tot+=hist[i].content.length;if(tot>14000&&keep.length)break;keep.unshift(hist[i])}
-  const o=keep.map(m=>({role:m.role,content:m.content}));while(o.length&&o[0].role!=='user')o.shift();
+  const G=prov()==='gemini';let tot=0;const keep=[];
+  for(let i=hist.length-1;i>=0&&keep.length<(G?30:20);i--){tot+=hist[i].content.length;if(tot>(G?150000:14000)&&keep.length)break;keep.unshift(hist[i])}
+  const o=keep.map(m=>({role:m.role,content:m.content,imgs:G?m.imgs:undefined}));while(o.length&&o[0].role!=='user')o.shift();
   const rem=um.hasFile?'\n\n(Si te pido cambiar el archivo, devuélvelo completo; si es solo una pregunta, responde corto y concreto.)':'\n\n(Responde corto y concreto, sin listas largas ni relleno.)';
-  if(direct&&um.imgs?.length)o.push({role:'user',content:[{type:'text',text:um.content+rem},...um.imgs.slice(0,4).map(u=>({type:'image_url',image_url:{url:u}}))]});
-  else o.push({role:'user',content:um.content+rem});
+  o.push({role:'user',content:um.content+rem,imgs:(G||direct)?um.imgs:undefined});
+  let n=0;for(let i=o.length-1;i>=0;i--){if(o[i].imgs?.length){if(n>=10)o[i].imgs=undefined;else n+=o[i].imgs.length}}
   return o}
 async function send(text,redo){
   if(busy)return;
   if(!redo){text=(text??q.value).trim();if(!text&&!pend.length)return}
-  const key=store.get('groq_key','');if(!key){openSettings();return}
+  if(!keyOf()){openSettings();return}
   let um;
   if(redo){um=redo}else{
     const files=pend.slice(),imgs=files.filter(f=>f.img).map(f=>f.img),docs=files.filter(f=>!f.img);
@@ -269,34 +331,33 @@ async function send(text,redo){
   d.innerHTML='<div class="think"><span class="dots"><i></i><i></i><i></i></span><span id="tk">Pensando…</span></div>';
   chat.appendChild(d);scroll(true);
   busy=true;go.textContent='■';go.className='stop';ctrl=new AbortController();
-  let out='',raf=0;
+  let out='',raf=0,stopped=false,failed=false,tag='';
   const paint=()=>{raf=0;d.innerHTML=render(clean(out));scroll()};
   try{
-    const sel=model();let direct=false;
-    if(um.imgs?.length&&!um.desc){
-      if(sel===VISION)direct=true;
+    let direct=false;
+    if(prov()==='groq'&&um.imgs?.length&&!um.desc){
+      if(model()===VISION)direct=true;
       else{
         const tk=d.querySelector('#tk');tk.textContent='Leyendo la foto…';
-        um.desc=(await see(um.imgs,um.ask,key)).slice(0,4000);
+        um.desc=(await see(um.imgs,um.ask)).slice(0,4000);
         if(!um.desc)throw new Error('No pude leer la foto. Prueba con otra más clara.');
         const b=`\n\n[Foto(s) adjunta(s). Lo que se ve: ${um.desc}]`;um.content+=b;um.short+=b;tk.textContent='Pensando…'}}
-    const M=direct?VISION:sel;
-    const extra=M===VISION?{reasoning_effort:'none',max_completion_tokens:2000}:{reasoning_effort:'medium',max_completion_tokens:4000};
-    const res=await fetch(API,{method:'POST',signal:ctrl.signal,headers:hdr(key),
-      body:JSON.stringify({model:M,stream:true,temperature:0.4,...extra,...(web&&M.startsWith('openai/')?{tools:[{type:'browser_search'}]}:{}),
-        messages:[{role:'system',content:SYS()},...build(um,direct)]})});
-    if(!res.ok)throw new Error(await apiErr(res));
-    const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
-    for(;;){const {done,value}=await rd.read();if(done)break;
-      buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
-      for(const l of ls){if(!l.startsWith('data:'))continue;const p=l.slice(5).trim();if(p==='[DONE]')continue;
-        try{const c=JSON.parse(p).choices?.[0]?.delta?.content;if(c){out+=c;if(!raf)raf=requestAnimationFrame(paint)}}catch(e){}}}
+    await llm({sys:SYS(),msgs:build(um,direct),web,onTok:t=>{out=t;if(!raf)raf=requestAnimationFrame(paint)}});
   }catch(err){
-    if(err.name==='AbortError'){out+=out?'\n\n_(detenido)_':'_(detenido)_'}
-    else if(!out){out='⚠️ '+(err.message==='Failed to fetch'?'Sin conexión. Revisa tu internet.':err.message)}
+    if(err.name==='AbortError'){stopped=true;out+=out?'\n\n_(detenido)_':'_(detenido)_'}
+    else if(!out){failed=true;out='⚠️ '+(err.message==='Failed to fetch'?'Sin conexión. Revisa tu internet.':err.message)}
   }
   cancelAnimationFrame(raf);out=clean(out);
-  d.innerHTML=render(out||'_(No alcancé a responder. Intenta otra vez o con una pregunta más corta.)_');
+  /* Revisión automática de cuentas y datos */
+  if(!stopped&&!failed&&out&&store.get('rv','1')==='1'&&/\d{2,}|\d\s*%/.test(out)&&!out.includes('```')&&out.length<5000){
+    d.innerHTML=render(out)+'<div class="think" style="margin-top:8px"><span class="dots"><i></i><i></i><i></i></span><span>Revisando cuentas…</span></div>';scroll();
+    try{
+      const msgs=build(um,false);msgs.push({role:'assistant',content:out},{role:'user',content:REVIEW});
+      const r=clean(await llm({sys:SYS(),msgs,temp:0.1,max:3000})).trim();
+      if(r&&r.length<12&&/^ok/i.test(r))tag='✓ Revisado';
+      else if(r&&!r.startsWith('⚠️')){out=r;tag='✓ Corregido tras revisar'}
+    }catch(e){if(e.name==='AbortError')stopped=true}}
+  d.innerHTML=render(out||'_(No alcancé a responder. Intenta otra vez o con una pregunta más corta.)_')+(tag?`<div class="rvt">${tag}</div>`:'');
   if(out&&!out.startsWith('⚠️')){hist.push(um,{role:'assistant',content:out});compact();save();actions(d,out)}
   busy=false;go.textContent='➤';go.className='';scroll();
 }
