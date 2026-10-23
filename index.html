@@ -1,313 +1,166 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Asistente IA</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-      background: #0c0c0e;
-      color: #f5f5f7;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    header {
-      background: rgba(28, 28, 30, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 14px 16px;
-      border-bottom: 1px solid #2c2c2e;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .logo {
-      width: 42px;
-      height: 42px;
-      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .logo svg { width: 24px; height: 24px; color: white; }
-    .title h1 { font-size: 17px; font-weight: 600; }
-    .title p { font-size: 12px; color: #8e8e93; margin-top: 1px; }
-
-    .actions {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      padding: 12px 16px;
-    }
-    .action-btn {
-      background: #1c1c1e;
-      border: 1px solid #2c2c2e;
-      border-radius: 14px;
-      padding: 12px 4px;
-      color: #f5f5f7;
-      font-size: 12px;
-      font-weight: 500;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 7px;
-      cursor: pointer;
-    }
-    .action-btn:active { transform: scale(0.96); background: #2c2c2e; }
-    .action-btn svg { width: 24px; height: 24px; }
-    .action-btn.imagen svg { color: #ff9f0a; }
-    .action-btn.foto svg { color: #30d158; }
-    .action-btn.ideas svg { color: #bf5af2; }
-    .action-btn.regalos svg { color: #ff375f; }
-
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .msg {
-      white-space: pre-wrap;
-      max-width: 85%;
-      padding: 12px 16px;
-      border-radius: 18px;
-      font-size: 15px;
-      line-height: 1.4;
-    }
-    .msg.user {
-      background: #0a84ff;
-      color: white;
-      align-self: flex-end;
-      border-bottom-right-radius: 6px;
-    }
-    .msg.ai {
-      background: #1c1c1e;
-      border: 1px solid #2c2c2e;
-      align-self: flex-start;
-      border-bottom-left-radius: 6px;
-    }
-    .msg.system {
-      color: #8e8e93;
-      font-size: 13px;
-      text-align: center;
-      align-self: center;
-    }
-    .loading { display: flex; gap: 4px; padding: 12px 16px; }
-    .dot {
-      width: 7px; height: 7px;
-      background: #8e8e93;
-      border-radius: 50%;
-      animation: bounce 1.4s infinite ease-in-out both;
-    }
-    .dot:nth-child(1) { animation-delay: -0.32s; }
-    .dot:nth-child(2) { animation-delay: -0.16s; }
-    @keyframes bounce {
-      0%, 80%, 100% { transform: scale(0); }
-      40% { transform: scale(1); }
-    }
-
-    .input-area {
-      padding: 12px 16px 20px;
-      background: rgba(28, 28, 30, 0.9);
-      border-top: 1px solid #2c2c2e;
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-    #q {
-      flex: 1;
-      background: #1c1c1e;
-      border: 1px solid #3a3a3c;
-      border-radius: 22px;
-      padding: 12px 18px;
-      color: white;
-      font-size: 16px;
-      outline: none;
-      resize: none;
-      max-height: 120px;
-      min-height: 44px;
-    }
-    #q:focus { border-color: #0a84ff; }
-    #send {
-      width: 44px;
-      height: 44px;
-      background: #0a84ff;
-      border: none;
-      border-radius: 50%;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-    #send:disabled { background: #3a3a3c; }
-    #send svg { width: 20px; height: 20px; }
-    #file { display: none; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<title>Asistente IA</title>
+<style>
+:root{--bg:#0b0b0d;--panel:#17171a;--line:#27272b;--text:#ececf0;--mute:#8e8e96;--acc:#3b82f6;--code:#101013;color-scheme:dark}
+@media (prefers-color-scheme:light){:root{--bg:#fff;--panel:#f3f3f6;--line:#e2e2e8;--text:#18181b;--mute:#6b6b75;--code:#f6f6f9;color-scheme:light}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#f97316,#db2777);display:grid;place-items:center;font-size:20px}
+.ttl{flex:1}.ttl b{display:block;font-size:17px}.ttl span{font-size:12px;color:var(--mute)}
+.ib{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:17px;cursor:pointer}
+#chat{flex:1;overflow-y:auto;padding:18px 16px;display:flex;flex-direction:column;gap:18px;scroll-behavior:smooth}
+.u{align-self:flex-end;max-width:85%;background:var(--acc);color:#fff;padding:10px 15px;border-radius:20px 20px 6px 20px;white-space:pre-wrap;word-break:break-word}
+.a{max-width:100%;word-break:break-word}
+.a>*:first-child{margin-top:0}.a>*:last-child{margin-bottom:0}
+.a p{margin:.6em 0}.a ul,.a ol{margin:.6em 0;padding-left:1.4em}.a li{margin:.2em 0}
+.a h1,.a h2,.a h3{margin:1em 0 .4em;line-height:1.25}.a h1{font-size:1.3em}.a h2{font-size:1.15em}.a h3{font-size:1.05em}
+.a code{background:var(--panel);padding:2px 6px;border-radius:6px;font:.88em ui-monospace,Menlo,monospace}
+.a pre{position:relative;background:var(--code);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;margin:.8em 0}
+.a pre code{background:none;padding:0;font-size:.85em;white-space:pre}
+.cp{position:absolute;top:6px;right:6px;font-size:12px;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--mute)}
+.tw{overflow-x:auto;margin:.8em 0}table{border-collapse:collapse;font-size:.92em}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left}th{background:var(--panel)}
+.act{margin-top:6px}.act button{background:none;border:0;color:var(--mute);font-size:13px;padding:4px 8px 4px 0}
+.dots{display:inline-flex;gap:5px;padding:6px 0}.dots i{width:7px;height:7px;border-radius:50%;background:var(--mute);animation:b 1.2s infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes b{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-4px)}}
+#hero{margin:auto;text-align:center;max-width:420px;width:100%}
+#hero h2{font-size:26px;margin:0 0 4px}#hero p{color:var(--mute);margin:0 0 22px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sg button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:16px;padding:14px 12px;text-align:left;font-size:14px;line-height:1.35;cursor:pointer}
+.sg b{display:block;font-size:20px;margin-bottom:4px}
+.bar{display:flex;gap:10px;align-items:flex-end;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+textarea{flex:1;resize:none;max-height:140px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;padding:11px 16px;font:inherit;outline:none}
+textarea:focus{border-color:var(--acc)}
+#go{width:44px;height:44px;border-radius:50%;border:0;background:var(--acc);color:#fff;font-size:18px;cursor:pointer;flex:none}
+#go.stop{background:#ef4444}
+#md{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+#md.on{display:flex}.box{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:20px;width:100%;max-width:380px}
+.box h3{margin:0 0 12px}.box label{font-size:13px;color:var(--mute);display:block;margin:12px 0 4px}
+.box input,.box select{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 12px;font:inherit}
+.row{display:flex;gap:8px;margin-top:16px}.row button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit}
+.row .p{background:var(--acc);border-color:var(--acc);color:#fff}
+</style>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <!-- Icono dulce -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 10 6 6"/><path d="m14 10-6 6"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-    </div>
-    <div class="title">
-      <h1>Asistente IA</h1>
-      <p>Pregúntame lo que sea</p>
-    </div>
-  </header>
+<header>
+  <div class="logo">✨</div>
+  <div class="ttl"><b>Asistente IA</b><span id="mn">Pregúntame lo que sea</span></div>
+  <button class="ib" id="nw" title="Nueva conversación">✎</button>
+  <button class="ib" id="st" title="Ajustes">⚙</button>
+</header>
+<div id="chat"></div>
+<div class="bar">
+  <textarea id="q" rows="1" placeholder="Escribe aquí…"></textarea>
+  <button id="go" title="Enviar">➤</button>
+</div>
+<div id="md"><div class="box">
+  <h3>Ajustes</h3>
+  <label>Clave de Groq (se guarda solo en este dispositivo)</label>
+  <input id="ky" type="password" placeholder="gsk_..." autocomplete="off">
+  <label>Modelo</label>
+  <select id="ml">
+    <option value="openai/gpt-oss-120b">GPT-OSS 120B · más inteligente</option>
+    <option value="openai/gpt-oss-20b">GPT-OSS 20B · más rápido</option>
+  </select>
+  <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
+</div></div>
+<script>
+const $=s=>document.querySelector(s);
+const chat=$('#chat'),q=$('#q'),go=$('#go'),md=$('#md');
+const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+let hist=[];try{hist=JSON.parse(store.get('hist','[]'))}catch(e){}
+let busy=false,ctrl=null;
+const SUG=[['💡','Explícame algo interesante de forma sencilla'],['✍️','Ayúdame a redactar un mensaje claro y amable'],['🧩','Ayúdame a resolver un problema paso a paso'],['💻','Escríbeme un código y explícamelo']];
 
-  <div class="actions">
-    <button class="action-btn imagen" onclick="preguntaRapida('Explícame algo interesante que casi nadie sabe, de forma sencilla')">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-      Explicar
-    </button>
+/* ---------- Markdown ---------- */
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const inl=s=>esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*\w])\*([^*\n]+)\*/g,'$1<i>$2</i>').replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+function block(t){
+  const L=t.split('\n'),o=[];let i=0;
+  while(i<L.length){
+    const l=L[i];
+    if(!l.trim()){i++;continue}
+    let m;
+    if(m=l.match(/^(#{1,3})\s+(.*)/)){o.push(`<h${m[1].length}>${inl(m[2])}</h${m[1].length}>`);i++;continue}
+    if(/^\s*([-*•])\s+/.test(l)){let b=[];while(i<L.length&&/^\s*([-*•])\s+/.test(L[i]))b.push(`<li>${inl(L[i++].replace(/^\s*([-*•])\s+/,''))}</li>`);o.push(`<ul>${b.join('')}</ul>`);continue}
+    if(/^\s*\d+[.)]\s+/.test(l)){let b=[];while(i<L.length&&/^\s*\d+[.)]\s+/.test(L[i]))b.push(`<li>${inl(L[i++].replace(/^\s*\d+[.)]\s+/,''))}</li>`);o.push(`<ol>${b.join('')}</ol>`);continue}
+    if(l.trim().startsWith('|')){let r=[];while(i<L.length&&L[i].trim().startsWith('|'))r.push(L[i++]);
+      const cells=x=>x.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const rows=r.filter(x=>!/^\s*\|?[\s:|-]+\|?\s*$/.test(x)||!x.includes('-'));
+      const h=cells(rows[0]||'');const body=rows.slice(1).map(x=>`<tr>${cells(x).map(c=>`<td>${inl(c)}</td>`).join('')}</tr>`).join('');
+      o.push(`<div class="tw"><table><tr>${h.map(c=>`<th>${inl(c)}</th>`).join('')}</tr>${body}</table></div>`);continue}
+    if(/^---+$/.test(l.trim())){o.push('<hr>');i++;continue}
+    let p=[];while(i<L.length&&L[i].trim()&&!/^(#{1,3}\s|\s*([-*•]|\d+[.)])\s|\|)/.test(L[i]))p.push(L[i++]);
+    if(!p.length){p=[L[i++]]}
+    o.push(`<p>${p.map(inl).join('<br>')}</p>`);
+  }
+  return o.join('');
+}
+function render(t){return t.split('```').map((p,i)=>{
+  if(i%2){const nl=p.indexOf('\n');const code=nl<0?p:p.slice(nl+1);return `<pre><button class="cp">Copiar</button><code>${esc(code.replace(/\n$/,''))}</code></pre>`}
+  return block(p)}).join('')}
 
-    <button class="action-btn foto" onclick="preguntaRapida('Ayúdame a redactar un mensaje claro y amable para...')">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-      Redactar
-    </button>
+/* ---------- UI ---------- */
+function scroll(){chat.scrollTop=chat.scrollHeight}
+function addUser(t){const d=document.createElement('div');d.className='u';d.textContent=t;chat.appendChild(d)}
+function addAI(t){const d=document.createElement('div');d.className='a';d.innerHTML=render(t);chat.appendChild(d);return d}
+function actions(d,t){const a=document.createElement('div');a.className='act';a.innerHTML='<button>Copiar respuesta</button>';a.firstChild.onclick=e=>{navigator.clipboard?.writeText(t);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar respuesta',1500)};d.appendChild(a)}
+function hero(){chat.innerHTML=`<div id="hero"><h2>¿En qué te ayudo?</h2><p>Pregúntame lo que quieras</p><div class="sg">${SUG.map((s,i)=>`<button data-i="${i}"><b>${s[0]}</b>${s[1]}</button>`).join('')}</div></div>`;
+  chat.querySelectorAll('.sg button').forEach(b=>b.onclick=()=>send(SUG[b.dataset.i][1]))}
+function load(){chat.innerHTML='';if(!hist.length)return hero();hist.forEach(m=>{if(m.role==='user')addUser(m.content);else{const d=addAI(m.content);actions(d,m.content)}});scroll()}
+chat.addEventListener('click',e=>{if(e.target.classList.contains('cp')){navigator.clipboard?.writeText(e.target.nextSibling.textContent);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar',1500)}});
+q.addEventListener('input',()=>{q.style.height='auto';q.style.height=Math.min(q.scrollHeight,140)+'px'});
+q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&innerWidth>700){e.preventDefault();send()}});
+go.onclick=()=>busy?ctrl.abort():send();
+$('#nw').onclick=()=>{if(busy)ctrl.abort();hist=[];store.del('hist');load()};
 
-    <button class="action-btn ideas" onclick="preguntaRapida('Dame 5 ideas creativas para un proyecto o negocio pequeño')">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
-      Ideas
-    </button>
+/* ---------- Ajustes ---------- */
+const model=()=>store.get('model','openai/gpt-oss-120b');
+function names(){$('#mn').textContent=model().includes('120')?'GPT-OSS 120B':'GPT-OSS 20B'}
+function openSettings(){$('#ky').value=store.get('groq_key','');$('#ml').value=model();md.classList.add('on')}
+$('#st').onclick=openSettings;$('#cl').onclick=()=>md.classList.remove('on');
+$('#sv').onclick=()=>{const k=$('#ky').value.replace(/[\s"']/g,'');if(k)store.set('groq_key',k);store.set('model',$('#ml').value);md.classList.remove('on');names()};
 
-    <button class="action-btn regalos" onclick="preguntaRapida('Ayúdame a resolver un problema paso a paso')">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>
-      Resolver
-    </button>
-  </div>
-
-  <div id="chat">
-    <div class="msg system">Hola 👋 Pregúntame lo que quieras: explicaciones, ideas, textos, código, traducciones…</div>
-  </div>
-
-  <div class="input-area">
-    <textarea id="q" rows="1" placeholder="Escribe aquí..." oninput="autoResize(this)"></textarea>
-    <button id="send" onclick="preguntar()">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-    </button>
-  </div>
-
-  
-
-  <script>
-    function getKey() {
-      let k = null;
-      try { k = localStorage.getItem('groq_key'); } catch (e) {}
-      if (!k) {
-        k = (prompt('Pega tu clave de Groq (se guarda solo en este teléfono):') || '').replace(/[\s"']/g, '');
-        if (k) { try { localStorage.setItem('groq_key', k); } catch (e) {} }
-      }
-      return k;
-    }
-
-    const historial = [];
-    const chat = document.getElementById('chat');
-    const input = document.getElementById('q');
-    const sendBtn = document.getElementById('send');
-
-    function autoResize(el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-    }
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        preguntar();
-      }
-    });
-
-    function addMsg(text, type = 'ai') {
-      const div = document.createElement('div');
-      div.className = `msg ${type}`;
-      div.textContent = text;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function showLoading() {
-      const div = document.createElement('div');
-      div.className = 'msg ai loading';
-      div.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-      return div;
-    }
-
-    async function preguntar() {
-      const q = input.value.trim();
-      if (!q) return;
-
-      const GROQ_KEY = getKey();
-      if (!GROQ_KEY) { addMsg("Falta la clave de Groq.", 'ai'); return; }
-
-      addMsg(q, 'user');
-      input.value = '';
-      input.style.height = 'auto';
-      sendBtn.disabled = true;
-
-      const loading = showLoading();
-
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + GROQ_KEY,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "openai/gpt-oss-20b",
-            messages: [
-              {
-                role: "system",
-                content: "Eres un asistente de IA amable, inteligente y muy capaz. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo; explica paso a paso cuando ayude y admite cuando no sepas algo. Puedes ayudar con cualquier tema: dudas, escritura, ideas, estudio, código, traducciones, análisis y consejos prácticos."
-              },
-              ...historial.slice(-20), { role: "user", content: q }
-            ],
-            temperature: 0.7,
-            reasoning_effort: "low",
-            max_completion_tokens: 2000
-          })
-        });
-
-        const data = await res.json();
-        loading.remove();
-
-        if (data.choices?.[0]) {
-          const r = data.choices[0].message.content || '';
-          historial.push({ role: 'user', content: q }, { role: 'assistant', content: r });
-          addMsg(r, 'ai');
-        } else {
-          const msg = data.error?.message || JSON.stringify(data);
-          if (res.status === 401) { try { localStorage.removeItem('groq_key'); } catch (e) {} }
-          addMsg("Error " + res.status + ": " + msg, 'ai');
-        }
-      } catch (err) {
-        loading.remove();
-        addMsg("Error de conexión.", 'ai');
-      }
-
-      sendBtn.disabled = false;
-      input.focus();
-    }
-
-    function preguntaRapida(texto) {
-      input.value = texto;
-      preguntar();
-    }
-
-  </script>
+/* ---------- Envío con streaming ---------- */
+async function send(text){
+  text=(text??q.value).trim();if(!text||busy)return;
+  const key=store.get('groq_key','');if(!key){openSettings();return}
+  if(!hist.length)chat.innerHTML='';
+  addUser(text);q.value='';q.style.height='auto';
+  const d=document.createElement('div');d.className='a';d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';chat.appendChild(d);scroll();
+  busy=true;go.textContent='■';go.className='stop';ctrl=new AbortController();
+  let out='',raf=0;
+  const paint=()=>{raf=0;d.innerHTML=render(out);scroll()};
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',signal:ctrl.signal,
+      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:model(),stream:true,temperature:0.7,reasoning_effort:'low',max_completion_tokens:4000,
+        messages:[{role:'system',content:'Eres un asistente de IA amable, inteligente y muy capaz. Hoy es '+new Date().toLocaleDateString('es-MX',{dateStyle:'full'})+'. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo, sin rodeos innecesarios. Explica paso a paso cuando ayude, usa formato Markdown (listas, negritas, bloques de código) cuando mejore la lectura y admite cuando no sepas algo.'},...hist.slice(-20),{role:'user',content:text}]})});
+    if(!res.ok){let m='';try{m=(await res.json()).error?.message}catch(e){}
+      if(res.status===401){store.del('groq_key');openSettings()}
+      throw new Error('Error '+res.status+': '+(m||'no se pudo conectar'))}
+    const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
+    for(;;){const {done,value}=await rd.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
+      for(const l of ls){if(!l.startsWith('data:'))continue;const p=l.slice(5).trim();if(p==='[DONE]')continue;
+        try{const c=JSON.parse(p).choices?.[0]?.delta?.content;if(c){out+=c;if(!raf)raf=requestAnimationFrame(paint)}}catch(e){}}}
+  }catch(err){
+    if(err.name==='AbortError'){out+=out?'\n\n_(detenido)_':'_(detenido)_'}
+    else if(!out){out='⚠️ '+(err.message==='Failed to fetch'?'Error de conexión.':err.message)}
+  }
+  cancelAnimationFrame(raf);
+  d.innerHTML=render(out||'_(sin respuesta)_');
+  if(out&&!out.startsWith('⚠️')){hist.push({role:'user',content:text},{role:'assistant',content:out});store.set('hist',JSON.stringify(hist.slice(-40)));actions(d,out)}
+  else if(out.startsWith('⚠️')&&!hist.length){/* error en primer mensaje: no guardar */}
+  busy=false;go.textContent='➤';go.className='';scroll();
+}
+names();load();
+</script>
 </body>
 </html>
