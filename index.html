@@ -54,6 +54,10 @@ textarea:focus{border-color:var(--acc)}
 .dl{position:absolute;top:6px;right:68px;font-size:12px;padding:4px 9px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--mute)}
 #wb{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:19px;flex:none;cursor:pointer;opacity:.55}
 #wb.on{opacity:1;border-color:var(--acc);background:#3b82f633}
+#upd{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#f59e0b22;border-bottom:1px solid #f59e0b77;padding:8px 16px;font-size:14px}
+#upd[hidden]{display:none}#upd button{background:#f59e0b;color:#111;border:0;border-radius:10px;padding:6px 14px;font:inherit;font-weight:600}
+#ci{width:100%;border-radius:12px;min-height:76px;max-height:160px;padding:10px 12px;flex:none}
+.ver{font-size:12px;color:var(--mute);margin-top:12px}
 </style>
 </head>
 <body>
@@ -63,6 +67,7 @@ textarea:focus{border-color:var(--acc)}
   <button class="ib" id="nw" title="Nueva conversación">✎</button>
   <button class="ib" id="st" title="Ajustes">⚙</button>
 </header>
+<div id="upd" hidden><span>🔔 Hay una actualización disponible</span><button id="updb">Actualizar</button></div>
 <div id="chat"></div>
 <div class="bar">
   <div id="chips"></div>
@@ -82,9 +87,13 @@ textarea:focus{border-color:var(--acc)}
     <option value="qwen/qwen3.8-27b">Qwen 3.8 27B · lee imágenes</option>
     <option value="openai/gpt-oss-20b">GPT-OSS 20B · más rápido</option>
   </select>
+  <label>Instrucciones personales (opcional: tu nombre, tono, cómo quieres las respuestas)</label>
+  <textarea id="ci" placeholder="Ej: Me llamo Ana. Respóndeme corto y con ejemplos."></textarea>
+  <div class="ver">Versión <span id="vv"></span></div>
   <div class="row"><button id="cl">Cancelar</button><button class="p" id="sv">Guardar</button></div>
 </div></div>
 <script>
+const VERSION='2026-10-23-2';
 const $=s=>document.querySelector(s);
 const chat=$('#chat'),q=$('#q'),go=$('#go'),md=$('#md');
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
@@ -124,12 +133,14 @@ function render(t){return t.split('```').map((p,i)=>{
 function scroll(){chat.scrollTop=chat.scrollHeight}
 function addUser(t,imgs){const d=document.createElement('div');d.className='u';(imgs||[]).forEach(u=>{const i=new Image();i.src=u;d.appendChild(i)});d.appendChild(document.createTextNode(t));chat.appendChild(d)}
 function addAI(t){const d=document.createElement('div');d.className='a';d.innerHTML=render(t);chat.appendChild(d);return d}
-function actions(d,t){const a=document.createElement('div');a.className='act';a.innerHTML='<button>Copiar respuesta</button>';a.firstChild.onclick=e=>{navigator.clipboard?.writeText(t);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar respuesta',1500)};d.appendChild(a)}
+function actions(d,t,last){chat.querySelectorAll('.rt').forEach(b=>b.remove());const a=document.createElement('div');a.className='act';a.innerHTML='<button>Copiar respuesta</button> <button class="rt">↻ Reintentar</button>';a.firstChild.onclick=e=>{navigator.clipboard?.writeText(t);e.target.textContent='¡Copiado!';setTimeout(()=>e.target.textContent='Copiar respuesta',1500)};d.appendChild(a)}
 function hero(){chat.innerHTML=`<div id="hero"><h2>¿En qué te ayudo?</h2><p>Pregúntame lo que quieras</p><div class="sg">${SUG.map((s,i)=>`<button data-i="${i}"><b>${s[0]}</b>${s[1]}</button>`).join('')}</div></div>`;
   chat.querySelectorAll('.sg button').forEach(b=>b.onclick=()=>send(SUG[b.dataset.i][1]))}
 function load(){chat.innerHTML='';if(!hist.length)return hero();hist.forEach(m=>{if(m.role==='user')addUser(m.show||m.content);else{const d=addAI(m.content);actions(d,m.content)}});scroll()}
 const EXT={javascript:'js',python:'py',typescript:'ts',markdown:'md',bash:'sh',shell:'sh',yml:'yaml',csharp:'cs'};
 chat.addEventListener('click',e=>{
+  if(e.target.classList.contains('rt')){if(busy)return;hist.pop();const u=hist.pop();store.set('hist',JSON.stringify(hist,(k,v)=>k==='imgs'?undefined:v));load();send(null,u);return}
+
   if(e.target.classList.contains('dl')){const l=(e.target.dataset.l||'').toLowerCase();const ext=/^[a-z0-9]+$/.test(l)?(EXT[l]||l):'txt';
     const name=lastFile?.name||('archivo.'+ext);const b=new Blob([e.target.nextSibling.nextSibling.textContent],{type:'text/plain'});
     const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();return}
@@ -143,9 +154,9 @@ $('#nw').onclick=()=>{if(busy)ctrl.abort();hist=[];store.del('hist');load()};
 /* ---------- Ajustes ---------- */
 const model=()=>store.get('model','openai/gpt-oss-120b');
 function names(){$('#mn').textContent={'openai/gpt-oss-120b':'GPT-OSS 120B','openai/gpt-oss-20b':'GPT-OSS 20B','qwen/qwen3.8-27b':'Qwen 3.8 27B'}[model()]||'Asistente'}
-function openSettings(){$('#ky').value=store.get('groq_key','');$('#ml').value=model();md.classList.add('on')}
+function openSettings(){$('#ky').value=store.get('groq_key','');$('#ci').value=store.get('ci','');$('#vv').textContent=VERSION;$('#ml').value=model();md.classList.add('on')}
 $('#st').onclick=openSettings;$('#cl').onclick=()=>md.classList.remove('on');
-$('#sv').onclick=()=>{const k=$('#ky').value.replace(/[\s"']/g,'');if(k)store.set('groq_key',k);store.set('model',$('#ml').value);md.classList.remove('on');names()};
+$('#sv').onclick=()=>{const k=$('#ky').value.replace(/[\s"']/g,'');if(k)store.set('groq_key',k);store.set('model',$('#ml').value);store.set('ci',$('#ci').value.trim());md.classList.remove('on');names()};
 
 /* ---------- Adjuntos ---------- */
 function chips(){const c=$('#chips');c.innerHTML='';pend.forEach((f,i)=>{const t=document.createElement('span');t.className='chip';t.innerHTML=(f.img?`<img src="${f.img}">`:'📄 ')+esc(f.name)+` <b data-i="${i}">✕</b>`;c.appendChild(t)});c.classList.toggle('on',pend.length>0)}
@@ -160,29 +171,29 @@ $('#fi').onchange=async e=>{
       if(f.type.startsWith('image/')){if(pend.filter(x=>x.img).length>=4){alert('Máximo 4 fotos por mensaje.');continue}pend.push({name:f.name||'foto.jpg',img:await shrink(f)})}
       else{if(f.size>1e6||/pdf|zip|word|excel|sheet|octet/.test(f.type)){alert('"'+f.name+'": por ahora solo fotos y archivos de texto o código (hasta 1 MB).');continue}
         let t=await f.text();if(t.includes('\u0000')){alert('"'+f.name+'" no es un archivo de texto.');continue}
-        if(t.length>60000)t=t.slice(0,60000)+'\n…(archivo recortado)';pend.push({name:f.name,text:t})}
+        if(t.length>12000){t=t.slice(0,12000)+'\n…(archivo recortado)';alert('"'+f.name+'" es largo: solo se leerán los primeros 12,000 caracteres (límite de la cuenta gratuita de Groq).')}pend.push({name:f.name,text:t})}
     }catch(err){alert('No pude leer "'+f.name+'".')}
   }
   e.target.value='';chips()};
 
 /* ---------- Envío con streaming ---------- */
 const VISION='qwen/qwen3.8-27b',clean=t=>t.replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
-function build(um){const arr=[...hist.slice(-20),um],o=[];let n=0,has=false;
+function build(um){let tot=0;const keep=[];for(let i=hist.length-1;i>=0&&keep.length<20;i--){tot+=hist[i].content.length;if(tot>12000&&keep.length)break;keep.unshift(hist[i])}
+  const arr=[...keep,um],o=[];let n=0,has=false;
   for(let i=arr.length-1;i>=0;i--){const m=arr[i];
     if(i===arr.length-1&&m.imgs?.length&&n<4){const im=m.imgs.slice(0,4-n);n+=im.length;has=true;o.unshift({role:'user',content:[{type:'text',text:m.content},...im.map(u=>({type:'image_url',image_url:{url:u}}))]})}
     else o.unshift({role:m.role,content:m.content})}
   return{msgs:o,has}}
-async function send(text){
-  text=(text??q.value).trim();if(busy||(!text&&!pend.length))return;
+async function send(text,redo){
+  if(busy)return;if(!redo){text=(text??q.value).trim();if(!text&&!pend.length)return}
   const key=store.get('groq_key','');if(!key){openSettings();return}
-  const files=pend.slice(),imgs=files.filter(f=>f.img).map(f=>f.img),docs=files.filter(f=>!f.img);
+  let um;if(redo){um=redo}else{const files=pend.slice(),imgs=files.filter(f=>f.img).map(f=>f.img),docs=files.filter(f=>!f.img);
   if(docs.length)lastFile=docs[docs.length-1];
   if(!text)text=docs.length?'Revisa el archivo adjunto y dime qué contiene.':'¿Qué ves en esta imagen? Descríbela con detalle.';
   const content=text+docs.map(f=>`\n\n[Archivo adjunto: ${f.name}]\n\`\`\`\n${f.text}\n\`\`\``).join('');
-  const um={role:'user',content,show:text+files.map(f=>'\n📎 '+f.name).join(''),imgs};
-  pend=[];chips();
+  um={role:'user',content,show:text+files.map(f=>'\n📎 '+f.name).join(''),imgs};pend=[];chips()}
   if(!hist.length)chat.innerHTML='';
-  addUser(um.show,imgs);q.value='';q.style.height='auto';
+  addUser(um.show,um.imgs);if(!redo){q.value='';q.style.height='auto'}
   const d=document.createElement('div');d.className='a';d.innerHTML='<span class="dots"><i></i><i></i><i></i></span>';chat.appendChild(d);scroll();
   busy=true;go.textContent='■';go.className='stop';ctrl=new AbortController();
   let out='',raf=0;
@@ -193,7 +204,7 @@ async function send(text){
     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',signal:ctrl.signal,
       headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
       body:JSON.stringify({model:M,stream:true,temperature:0.7,...extra,...(web&&M.startsWith('openai/')?{tools:[{type:'browser_search'}]}:{}),
-        messages:[{role:'system',content:'Eres un asistente de IA amable, inteligente y muy capaz. Hoy es '+new Date().toLocaleDateString('es-MX',{dateStyle:'full'})+'. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo, sin rodeos innecesarios. Explica paso a paso cuando ayude, usa formato Markdown (listas, negritas, bloques de código) cuando mejore la lectura y admite cuando no sepas algo. Si tienes búsqueda en internet disponible, úsala para datos actuales (precios, tiendas, noticias) y no inventes lugares ni datos. El usuario puede adjuntar fotos (puedes verlas) y archivos de texto o código. Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un único bloque de código (nunca recortes con "..."), y después explica brevemente qué cambiaste.'},...msgs]})});
+        messages:[{role:'system',content:'Eres un asistente de IA amable, inteligente y muy capaz. Hoy es '+new Date().toLocaleDateString('es-MX',{dateStyle:'full'})+'. Responde en el idioma del usuario (por defecto español). Sé claro, honesto y directo, sin rodeos innecesarios. Explica paso a paso cuando ayude, usa formato Markdown (listas, negritas, bloques de código) cuando mejore la lectura y admite cuando no sepas algo. Si tienes búsqueda en internet disponible, úsala para datos actuales (precios, tiendas, noticias) y no inventes lugares ni datos. El usuario puede adjuntar fotos (puedes verlas) y archivos de texto o código. Si te pide modificar un archivo, devuelve el archivo COMPLETO ya modificado en un único bloque de código (nunca recortes con "..."), y después explica brevemente qué cambiaste.'+(store.get('ci','')?' Instrucciones personales del usuario: '+store.get('ci',''):'')},...msgs]})});
     if(!res.ok){let m='';try{m=(await res.json()).error?.message}catch(e){}
       if(res.status===401){store.del('groq_key');openSettings()}
       throw new Error('Error '+res.status+': '+(m||'no se pudo conectar'))}
@@ -211,6 +222,10 @@ async function send(text){
   if(out&&!out.startsWith('⚠️')){hist.push(um,{role:'assistant',content:out});store.set('hist',JSON.stringify(hist.slice(-40),(k,v)=>k==='imgs'?undefined:v));actions(d,out)}
   busy=false;go.textContent='➤';go.className='';scroll();
 }
+/* ---------- Actualizaciones ---------- */
+async function checkUpdate(){try{const r=await fetch(location.pathname+'?c='+Date.now(),{cache:'no-store'});const m=(await r.text()).match(/const VERSION='([^']+)'/);if(m&&m[1]!==VERSION)$('#upd').hidden=false}catch(e){}}
+$('#updb').onclick=()=>{location.href=location.pathname+'?v='+Date.now()};
+setTimeout(checkUpdate,2500);setInterval(checkUpdate,120000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate()});
 names();load();
 </script>
 </body>
