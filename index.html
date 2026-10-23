@@ -201,7 +201,15 @@
   <input type="file" id="file" accept="image/*">
 
   <script>
-    const GROQ_KEY = "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";
+    function getKey() {
+      let k = null;
+      try { k = localStorage.getItem('groq_key'); } catch (e) {}
+      if (!k) {
+        k = (prompt('Pega tu clave de Groq (se guarda solo en este teléfono):') || '').trim();
+        if (k) { try { localStorage.setItem('groq_key', k); } catch (e) {} }
+      }
+      return k;
+    }
 
     const chat = document.getElementById('chat');
     const input = document.getElementById('q');
@@ -240,6 +248,9 @@
       const q = input.value.trim();
       if (!q) return;
 
+      const GROQ_KEY = getKey();
+      if (!GROQ_KEY) { addMsg("Falta la clave de Groq.", 'ai'); return; }
+
       addMsg(q, 'user');
       input.value = '';
       input.style.height = 'auto';
@@ -274,7 +285,8 @@
         if (data.choices?.[0]) {
           addMsg(data.choices[0].message.content, 'ai');
         } else {
-          addMsg("Error: revisa tu clave de Groq.", 'ai');
+          try { localStorage.removeItem('groq_key'); } catch (e) {}
+          addMsg("Error: la clave no es válida. Se borró; vuelve a intentar para pegar una nueva.", 'ai');
         }
       } catch (err) {
         loading.remove();
